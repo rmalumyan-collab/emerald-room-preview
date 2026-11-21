@@ -35,3 +35,5 @@ jobs:
         run: node labs/crypt-projection/tests/g2b_weighted_atlas.mjs
       - name: Scene manifest provenance and validation
         run: node labs/crypt-projection/tests/scene_contract.mjs
+      - name: Portable phone HTML deterministic build and syntax
+        run: node labs/crypt-projection/tools/build_portable.mjs --check
