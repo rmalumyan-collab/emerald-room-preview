@@ -343,7 +343,7 @@ function g2Pass(r,size,mode){
  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(fb);gl.deleteTexture(tex);
  gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,depthTexture);
  gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,masterTexture);
- gl.enable(gl.DEPTH_TEST);gl.useProgram(program);
+ gl.enable(gl.DEPTH_TEST);gl.clearColor(.105,.135,.13,1);gl.useProgram(program);
  return {canvas:pixelsToCanvas(bytes,size),bytes};
 }
 async function g2Bake(){
