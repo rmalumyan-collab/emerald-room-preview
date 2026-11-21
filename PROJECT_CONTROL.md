@@ -101,3 +101,16 @@ Issue: https://github.com/rmalumyan-collab/emerald-room-preview/issues/1
 - Evidence: module syntax and test-vector UV/GLB structure PASS in V8; preview inline JS syntax PASS; `main/index.html` SHA is unchanged. **Actual phone WebGL2 shader, real master image alignment, atlas quality, and independent import of a real generated GLB NOT VERIFIED.**
 - G2a does not yet implement second camera, seam dilation, full UV bake across all source-covered walls, or mobile optimization.
 - Keep Pull Request #2 **draft**, do not merge until G2a real-device QA.
+
+## 9. G2b corrective base revision — 2026-11-21
+
+**Reason**: /truth identified equal-sized UV cells, unlit-only GLB, missing source/geometry/bake provenance and no repeatable automated gate.
+
+- **DONE** `src/weighted-atlas.mjs`: geometry-area weighted atlas with 90° rotation, 2px gutter dilation. On real v4.1 generator (936 triangles, 468 quads), 1024 atlas placed all quads with **0 overlaps / 0 out-of-bounds**. Largest wall cell **403×218** versus prior uniform **46.5×46.5** per cell. This is algorithmic structural improvement, **not visual fidelity proof**.
+- **DONE** `src/atlas-export.mjs`: explicit `unlit` QA vs experimental `pbr` GLB; PBR does not erase baked source shadows.
+- **DONE** `src/scene-contract.mjs` + `docs/SCENE_CONTRACT_v1.md`: validated source (local-only, name+dimensions), draft geometry, camera, bake and acceptance data exported with GLB.
+- **DONE** `v41-uv-glb-preview.html`: G2b weighted atlas/dilated masks/manifest wired without touching `main`.
+- **DONE** GitHub Actions `crypt-projection-checks.yml` runs five dependency-free Node tests. Earlier CI revealed a floating-point assertion defect, now corrected; see latest successful workflow run rather than asserting that all future commits pass.
+- **STILL BLOCKED** real master camera match, semantic geometry revision matching candidate renders, browser GPU bake and actual Android FPS/quality; no multi-source blending. Nothing merged or deployed.
+
+Review **Draft PR #2**, Issue #1 and `project-state.json`. Proceed with one locked wall and pilaster + user-approved local image, real RMS and independently reopened GLB before G2b acceptance.
