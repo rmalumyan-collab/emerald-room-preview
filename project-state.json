@@ -138,5 +138,48 @@
       ],
       "noMasterUploaded": true
     }
+  },
+  "audit": {
+    "date": "2026-11-21",
+    "document": "docs/TRUTH_AUDIT_2026-11-21.md",
+    "verdict": "NO_GO_FOR_MAIN_MERGE__GO_FOR_ONE_WALL_EVIDENCE",
+    "evidence": {
+      "github": {
+        "main": "8a1bd7f01b6acb619df3ec68e390fbfa65ec2899",
+        "integration_head_before_audit": "04e9abc246333daaff6bc487f923077166b272b5",
+        "commits_ahead": 20,
+        "behind": 0,
+        "changed_files": 15,
+        "pr_2_draft": true
+      },
+      "test02": {
+        "mesh_triangles": 584,
+        "quad_faces": 292,
+        "synthetic_rms_px": 0,
+        "perturbed_rms_px": 4.703020306143706,
+        "local_node_tests": "PASS"
+      },
+      "v41": {
+        "triangles": 936,
+        "quads": 468,
+        "uvGrid": 22,
+        "cell_atlas_1024_px": 46.55,
+        "cell_atlas_2048_px": 93.09
+      },
+      "g2": {
+        "glb_specimen_independently_imported": "PASS_2_TRIANGLES_ONLY",
+        "real_gpu_bake": "NOT_RUN",
+        "master_image_fit": "NOT_RUN",
+        "android_fps": "NOT_RUN"
+      }
+    },
+    "priority_blockers": [
+      "missing real-master calibration and GPU QA",
+      "equal per-face UV allocation insufficient for high-detail wall",
+      "KHR_materials_unlit ignores dynamic day/night lights",
+      "no integrated editor->player route or one-tap G2 preview",
+      "no measured speedup"
+    ],
+    "next_decision": "Run and accept one-wall + pilaster test with real master, fix texel-density and lit material before multi-view expansion"
   }
 }
