@@ -55,8 +55,8 @@
     },
     "projection": {
       "owner": "this integration chat / lab",
-      "status": "in_progress",
-      "next": "Port camera and QA math, real-source one wall and pilaster calibration"
+      "status": "G1_preview_code_committed_not_gpu_verified",
+      "next": "User performs Android WebGL2 smoke test with approved local master render; measure RMS/0-15-30 coverage before UV/GLB integration"
     }
   },
   "gates": [
@@ -68,7 +68,8 @@
     {
       "id": "G1",
       "name": "camera matching on actual master",
-      "status": "not_started"
+      "status": "partial_code_only",
+      "note": "v4.1-derived WebGL2 lab camera UI, depth texture projection, local image import, manual landmarks and QA code committed; real master render calibration and GPU test outstanding"
     },
     {
       "id": "G2",
@@ -81,5 +82,31 @@
       "status": "not_started"
     }
   ],
-  "evidence_rule": "Do not describe synthetic math tests as photorealistic alignment or phone runtime verification"
+  "evidence_rule": "Do not describe synthetic math tests as photorealistic alignment or phone runtime verification",
+  "integration_lab": {
+    "path": "labs/crypt-projection/v41-camera-preview.html",
+    "kind": "v4.1 derived experimental single-file viewer",
+    "source_immutability": "main not modified",
+    "capabilities_committed": [
+      "local approved image import",
+      "projector camera editing and save JSON",
+      "projector-depth occlusion",
+      "one left wall bay plus pilaster projection",
+      "4 manual landmark RMS",
+      "0/15/30 screenshots plus source coverage JSON"
+    ],
+    "verified": [
+      "JavaScript syntax compiled in V8",
+      "static anchors checks",
+      "local standalone Test02 Node maths+GLB export PASS"
+    ],
+    "not_verified": [
+      "new WebGL2 shader runtime on GPU",
+      "actual crypt alignment",
+      "image overlay visual fit",
+      "mobile FPS",
+      "UV atlas and GLB integration for v4.1"
+    ],
+    "sourceImageCommitted": false
+  }
 }
