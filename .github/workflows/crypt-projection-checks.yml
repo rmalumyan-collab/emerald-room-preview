@@ -33,3 +33,5 @@ jobs:
         run: node labs/crypt-projection/tests/g2_atlas_glb.mjs
       - name: Weighted UV, gutter, material-mode regression
         run: node labs/crypt-projection/tests/g2b_weighted_atlas.mjs
+      - name: Scene manifest provenance and validation
+        run: node labs/crypt-projection/tests/scene_contract.mjs
