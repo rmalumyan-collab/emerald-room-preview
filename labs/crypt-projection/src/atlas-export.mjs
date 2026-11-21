@@ -16,8 +16,9 @@ export function quadAtlasUV(vertexCount,padding=.06){
  }
  return {uv,grid,faceCount,vertexCount};
 }
-export function makeGLB({positions,normals,uv,pngBytes,name='Crypt Room G2 baked lab'}){
+export function makeGLB({positions,normals,uv,pngBytes,name='Crypt Room G2 baked lab',materialMode='unlit'}){
  if(positions.length%3||positions.length<9||normals.length!==positions.length||uv.length!==positions.length/3*2)throw Error('Attribute count mismatch');
+ if(materialMode!=='unlit'&&materialMode!=='pbr')throw Error('Unknown materialMode');
  const png=pngBytes instanceof Uint8Array?pngBytes:new Uint8Array(pngBytes);
  if(png.length<8||png[0]!==137||png[1]!==80||png[2]!==78||png[3]!==71)throw Error('PNG required');
  const p=positions instanceof Float32Array?positions:new Float32Array(positions);
@@ -43,8 +44,8 @@ export function makeGLB({positions,normals,uv,pngBytes,name='Crypt Room G2 baked
  const imgView=append(png),binSize=(offset+3)&~3;
  const gltf={asset:{version:'2.0',generator:'Emerald World Builder G2'},scene:0,scenes:[{nodes:[0]}],
   nodes:[{mesh:0,name}],meshes:[{primitives:[{attributes:{POSITION:P,NORMAL:N,TEXCOORD_0:T},mode:4,material:0}]}],
-  materials:[{name:'Experimental baked albedo',doubleSided:true,pbrMetallicRoughness:{baseColorTexture:{index:0},metallicFactor:0,roughnessFactor:1},extensions:{KHR_materials_unlit:{}}}],
-  extensionsUsed:['KHR_materials_unlit'],textures:[{source:0,sampler:0}],
+  materials:[{name:materialMode==='pbr'?'Experimental lit material (albedo may contain shadows)':'Reference-match QA (unlit)',doubleSided:true,pbrMetallicRoughness:{baseColorTexture:{index:0},metallicFactor:0,roughnessFactor:1},...(materialMode==='unlit'?{extensions:{KHR_materials_unlit:{}}}:{})}],
+  ...(materialMode==='unlit'?{extensionsUsed:['KHR_materials_unlit']}:{}),textures:[{source:0,sampler:0}],
   samplers:[{magFilter:9729,minFilter:9729,wrapS:33071,wrapT:33071}],
   images:[{bufferView:imgView,mimeType:'image/png'}],buffers:[{byteLength:binSize}],bufferViews:views,accessors};
  const data=new TextEncoder().encode(JSON.stringify(gltf)),jsonSize=(data.length+3)&~3;
