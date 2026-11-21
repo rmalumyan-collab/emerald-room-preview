@@ -187,7 +187,6 @@
         "path": "labs/crypt-projection/G2B_PHONE_OFFLINE.html",
         "generator": "labs/crypt-projection/tools/build_portable.mjs",
         "status": "committed_CI_portability_sync_pass_actual_phone_not_tested",
-        "fileBytes": 49934,
         "platform": "Android local-file HTML + WebGL2 subject to browser policy",
         "dependencies": "all 3 local modules inlined; no external services",
         "verified": [
@@ -198,7 +197,10 @@
         "notVerified": [
           "actual Android local file execution",
           "WebGL2 GPU baking and GLB download"
-        ]
+        ],
+        "fileSizeUtf8Bytes": 50173,
+        "fileCharacters": 49934,
+        "lastVerifiedWorkflowUrl": "https://github.com/rmalumyan-collab/emerald-room-preview/actions/runs/44885610793"
       }
     }
   },
