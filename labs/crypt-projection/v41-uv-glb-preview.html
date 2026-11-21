@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="hy"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Crypt Projection G2a · UV Bake & GLB Lab</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#101718;color:#f3eadb;font-family:system-ui,Arial,sans-serif;touch-action:none}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#hud{position:fixed;left:8px;right:8px;top:env(safe-area-inset-top,0px);padding-top:8px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;pointer-events:none}
+.panel{border:1px solid #6d725b99;border-radius:10px;background:#142022da;padding:8px 10px;max-width:300px;backdrop-filter:blur(5px);font-size:12px}
+.panel strong{display:block;color:#eac985;letter-spacing:.3px}
+#status{color:#c8d3be;font-size:11px;margin-top:4px}
+#buttons{position:fixed;top:74px;left:8px;right:8px;display:flex;flex-wrap:wrap;gap:5px;pointer-events:auto}
+button{background:#243533dc;border:1px solid #9da38988;border-radius:8px;color:#f2e6cf;padding:8px 11px;font-size:12px;font-weight:600;touch-action:manipulation}
+button:active,button.active{background:#7a8150;border-color:#e1d3a8}
+#guide{position:fixed;left:50%;transform:translateX(-50%);bottom:env(safe-area-inset-bottom,12px);font-size:11px;white-space:nowrap;background:#142022c9;border-radius:7px;padding:5px 9px;pointer-events:none}
+#joystick{position:fixed;left:16px;bottom:calc(32px + env(safe-area-inset-bottom,0px));width:115px;height:115px;border-radius:50%;border:2px solid #b7c8b366;background:#20332d7a;touch-action:none}
+#nub{position:absolute;left:36px;top:36px;width:39px;height:39px;border-radius:50%;background:#dfd5a1af;border:1px solid #fff7;pointer-events:none}
+#look{position:fixed;right:12px;bottom:calc(44px + env(safe-area-inset-bottom,0px));border:1px solid #fff5;border-radius:10px;background:#172a2399;padding:10px;font-size:12px;pointer-events:none}
+#error{display:none;position:fixed;inset:30% 12%;background:#172222;border:2px solid #cb9e67;border-radius:16px;padding:18px;line-height:1.5}
+#crosshair{position:fixed;left:50%;top:51%;width:9px;height:9px;transform:translate(-50%,-50%);border:1px solid #e9e0bfaa;border-radius:50%;pointer-events:none}
+@media(min-width:850px){#buttons{top:59px}#joystick{opacity:.55}#look{opacity:.6}}
+
+#projectLab{position:fixed;top:150px;right:8px;width:min(300px,calc(100vw - 16px));z-index:20;background:#102326ee;border:1px solid #8da89e88;border-radius:12px;padding:9px;box-shadow:0 8px 30px #0006;max-height:58vh;overflow:auto;font-size:12px}
+#projectLab summary{cursor:pointer;font-weight:700;color:#e8d39e}
+#projectLab .line{display:flex;gap:5px;align-items:center;margin:6px 0;flex-wrap:wrap}
+#projectLab label{display:flex;flex-direction:column;gap:3px;flex:1;min-width:55px}
+#projectLab input[type=number]{width:100%;background:#13282b;color:#fff;padding:6px;border:1px solid #72858266;border-radius:6px}
+#projectLab input[type=file]{width:100%;font-size:11px}
+#projectLab select{max-width:100%;background:#172b2a;color:white;border:1px solid #8ea296;padding:6px}
+#projOverlay{display:none;position:fixed;inset:0;width:100vw;height:100vh;object-fit:contain;pointer-events:none;z-index:8;opacity:.4}
+#labStatus{line-height:1.45;color:#b8dacf;font-size:11px;white-space:pre-wrap}
+@media(max-width:650px){#projectLab{top:125px;max-height:42vh;width:235px}#projectLab:not([open]){width:auto}#buttons{top:70px}}
+</style></head>
+<body><canvas id="view"></canvas>
+<div id="hud"><div class="panel"><strong>EMERALD ROOM · FAST DRAFT v4.1</strong><div id="status">WebGL2: ստուգվում է…</div></div><div class="panel"><strong>LOW POLY TEST</strong><span id="fps">FPS: —</span><div>Vault test · geometry ≠ final</div></div></div>
+<div id="buttons"><button data-view="hero" class="active">01 · Hero</button><button data-view="left">D · Ձախ</button><button data-view="right">B · Աջ</button><button data-view="rear">C · Մուտք</button><button data-view="ceiling">Առաստաղ</button><button id="mapBtn">A–D քարտեզ</button></div>
+<div id="joystick"><div id="nub"></div></div><div id="look">↔ Քաշիր՝ նայելու համար</div><div id="guide">Ձախ՝ շարժվել · աջ՝ նայել · W A S D</div><div id="crosshair"></div><div id="error"></div>
+<img id="projOverlay" alt="Local calibration overlay">
+<details id="projectLab"><summary>G2a · Camera Projection + UV/GLB (experimental)</summary>
+<div class="line"><label>Local render<input id="masterUpload" type="file" accept="image/png,image/jpeg,image/webp"></label></div>
+<div class="line"><button id="lockCamera">Use current view</button><button id="showProj">Projection ON</button><button id="showCoverage">Coverage</button></div>
+<div class="line"><label>X<input type="number" id="pX" step=".1"></label><label>Y<input type="number" id="pY" step=".1"></label><label>Z<input type="number" id="pZ" step=".1"></label></div>
+<div class="line"><label>Yaw °<input type="number" id="pYaw" step=".5"></label><label>Pitch °<input type="number" id="pPitch" step=".5"></label><label>FOV °<input type="number" id="pFov" min="25" max="110" step="1"></label></div>
+<div class="line"><label><input type="checkbox" id="compareOverlay">Overlay source (match view)</label><label>Alpha<input id="overlayLevel" type="range" min="10" max="90" value="45"></label></div>
+<div class="line"><select id="landmarkSelect"><option value="altar">Altar center</option><option value="pillar">Left pilaster top</option><option value="wall">Left wall</option><option value="vault">Vault crown</option></select><button id="markLandmark">Mark on image</button></div>
+<div class="line"><button id="downloadCamera">Camera JSON</button><button id="captureQA">QA 0/15/30 + JSON</button></div>
+<div class="line"><label>Atlas<select id="atlasSize"><option value="1024">1024² · mobile</option><option value="2048">2048² · quality test</option></select></label></div><div class="line"><button id="bakeAtlas">Bake atlas</button><button id="downloadAtlas" disabled>UV PNG</button><button id="downloadMask" disabled>Mask PNG</button><button id="exportGLB" disabled>GLB</button></div><div id="bakeStatus" style="font-size:11px;color:#d7cb91;line-height:1.4">Not baked. G2a supports one calibrated source, not full multisource blending.</div><div id="labStatus">No source yet. Load local render or keep original draft shading. Only one left wall bay and one pilaster are eligible for projection.</div>
+</details>
+<script>
+(function(){
+'use strict';
+var canvas=document.getElementById('view'), status=document.getElementById('status'), fpsEl=document.getElementById('fps');
+var gl=canvas.getContext('webgl2',{antialias:false,powerPreference:'low-power',alpha:false,depth:true,preserveDrawingBuffer:true});
+if(!gl){document.getElementById('error').style.display='block';document.getElementById('error').textContent='Այս դիտարկիչում WebGL2 հասանելի չէ։ Բացիր Chrome-ում, կամ ստուգիր GPU արագացումը։';status.textContent='WebGL2: NO';return;}
+status.textContent='WebGL2: YES · Touch + collisions · Draft';
+var vs='#version 300 es\nprecision mediump float;in vec3 position;in vec3 normal;in vec3 color;uniform vec3 eye;uniform vec2 angles;uniform mat4 proj;out vec3 vColor;out float vFog;out vec4 vProject;out vec3 vWorld;uniform mat4 projectorVP;void main(){vWorld=position;vProject=projectorVP*vec4(position,1.);vec3 d=position-eye;float y=angles.x,p=angles.y;vec3 forward=vec3(sin(y)*cos(p),sin(p),-cos(y)*cos(p));vec3 right=vec3(cos(y),0.,sin(y));vec3 up=cross(right,forward);float dist=max(.1,dot(d,forward));vec3 v=vec3(dot(d,right),dot(d,up),-dot(d,forward));gl_Position=proj*vec4(v,1.);float light=.56+.44*max(0.,dot(normalize(normal),normalize(vec3(-.4,1.,.6))));vColor=color*light;vFog=clamp((dist-13.)/28.,0.,.82);}';
+var fs=`#version 300 es
+precision highp float;
+in vec3 vColor;in float vFog;in vec4 vProject;in vec3 vWorld;
+uniform sampler2D masterTex;uniform sampler2D shadowDepth;
+uniform int hasMaster;uniform int projectionMode;
+out vec4 outColor;
+void main(){
+ vec3 normalColor=mix(vColor,vec3(.105,.135,.13),vFog);
+ bool target=(vWorld.x<-3.8 && vWorld.z>-5.2 && vWorld.z< -2.0);
+ vec3 ndc=vProject.xyz/max(vProject.w,.0001);
+ vec2 uv=ndc.xy*.5+.5;
+ float depth=ndc.z*.5+.5;
+ bool visible=hasMaster==1 && vProject.w>.001 &&
+   all(greaterThan(uv,vec2(.002))) && all(lessThan(uv,vec2(.998))) &&
+   depth>0. && depth<1. && depth<=texture(shadowDepth,uv).r+.005;
+ // Only one wall bay and one left pilaster are painted in G1.
+ // x/z are supplied separately as scene-space position.
+ if(projectionMode==0 || !target) visible=false;
+ vec3 projected=texture(masterTex,uv).rgb;
+ if(projectionMode==2)outColor=vec4(!target?normalColor:(visible?vec3(.13,.9,.62):vec3(.97,.25,.57)),1.);
+ else outColor=vec4(visible?projected:normalColor,1.);
+}`;
+function compile(type,src){var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
+var program=gl.createProgram();try{gl.attachShader(program,compile(gl.VERTEX_SHADER,vs));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fs));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));}catch(e){status.textContent='Shader: FAIL '+e.message;return;}
+gl.useProgram(program);
+var vertices=[],normals=[],colors=[], triangles=0;
+function face(a,b,c,d,col,n){[a,b,c,a,c,d].forEach(function(p){vertices.push(p[0],p[1],p[2]);normals.push(n[0],n[1],n[2]);colors.push(col[0],col[1],col[2]);});triangles+=2;}
+function box(cx,cy,cz,w,h,d,col){var x=cx-w/2,X=cx+w/2,y=cy-h/2,Y=cy+h/2,z=cz-d/2,Z=cz+d/2;
+face([x,y,Z],[X,y,Z],[X,Y,Z],[x,Y,Z],col,[0,0,1]);face([X,y,z],[x,y,z],[x,Y,z],[X,Y,z],col,[0,0,-1]);
+face([x,y,z],[x,y,Z],[x,Y,Z],[x,Y,z],col,[-1,0,0]);face([X,y,Z],[X,y,z],[X,Y,z],[X,Y,Z],col,[1,0,0]);
+face([x,Y,Z],[X,Y,Z],[X,Y,z],[x,Y,z],col,[0,1,0]);face([x,y,z],[X,y,z],[X,y,Z],[x,y,Z],col,[0,-1,0]);}
+function ring(cx,cy,cz,rOuter,rInner,col){for(var i=0;i<24;i++){var a=i*Math.PI/12,b=(i+1)*Math.PI/12;face([cx+Math.cos(a)*rInner,cy,cz+Math.sin(a)*rInner],[cx+Math.cos(b)*rInner,cy,cz+Math.sin(b)*rInner],[cx+Math.cos(b)*rOuter,cy,cz+Math.sin(b)*rOuter],[cx+Math.cos(a)*rOuter,cy,cz+Math.sin(a)*rOuter],col,[0,1,0]);}}
+function pillar(x,z){box(x,2.55,z,.68,5.1,.68,[.53,.49,.39]);box(x,.33,z,1.05,.64,1.05,[.44,.41,.34]);box(x,4.88,z,.98,.42,.98,[.61,.57,.46]);}
+function vaultY(x){return 5.08+1.25*(1-Math.pow(x/5.55,2));}
+function barrelVault(){for(var i=0;i<12;i++){var a=-5.52+i*11.04/12,b=-5.52+(i+1)*11.04/12;face([a,vaultY(a),-10.10],[b,vaultY(b),-10.10],[b,vaultY(b),10.10],[a,vaultY(a),10.10],i%2?[.43,.43,.37]:[.49,.47,.39],[0,-1,0]);}}
+function vaultRib(z){for(var i=0;i<12;i++){var a=-5.52+i*11.04/12,b=-5.52+(i+1)*11.04/12;face([a,vaultY(a)-.095,z-.16],[b,vaultY(b)-.095,z-.16],[b,vaultY(b)-.095,z+.16],[a,vaultY(a)-.095,z+.16],[.61,.57,.46],[0,-1,0]);}}
+function banner(x,z){box(x,3.75,z,.035,1.45,.68,[.13,.28,.24]);box(x,4.48,z,.07,.09,.76,[.57,.45,.18]);}
+box(0,-.18,0,11,.36,20.5,[.32,.34,.31]);box(-5.52,2.7,0,.35,5.4,20.5,[.42,.44,.39]);box(5.52,2.7,0,.35,5.4,20.5,[.43,.45,.4]);box(0,2.9,-10.15,11,5.8,.38,[.4,.43,.37]);
+box(-4.22,2.75,10.18,2.6,5.5,.38,[.42,.44,.39]);box(4.22,2.75,10.18,2.6,5.5,.38,[.42,.44,.39]);box(0,4.7,10.18,5.9,1.6,.38,[.47,.46,.38]);
+barrelVault();
+var cols=[-7.3,-3.5,.3,4.1,7.9];cols.forEach(function(z){pillar(-4.42,z);pillar(4.42,z);vaultRib(z);});
+for(var i=0;i<4;i++){var z=-5.95-i*.52;box(0,.12+i*.2,z,6.65,.24,0.52,[.48,.45,.38]);}
+box(0,.92,-8.8,6.9,.2,2.9,[.44,.41,.34]);box(0,1.55,-9.2,2.7,1.2,.95,[.56,.49,.32]);box(0,2.35,-9.2,2.9,.24,1.05,[.76,.61,.30]);
+box(0,3.35,-9.95,3.2,2.8,.1,[.21,.32,.29]);box(0,3.35,-9.87,.95,1.15,.08,[.75,.63,.28]);
+ring(0,.012,1.2,1.95,1.7,[.67,.56,.27]);ring(0,.015,1.2,.9,.7,[.65,.52,.24]);
+[-4.42,4.42].forEach(function(x){[-7.3,-3.5,.3,4.1].forEach(function(z){box(x>0?x-.54:x+.54,3.85,z,.16,.23,.25,[.34,.88,.55]);});});
+banner(-5.28,-1.7);banner(5.28,-1.7);
+var posBuffer=gl.createBuffer(),normBuffer=gl.createBuffer(),colBuffer=gl.createBuffer();
+var mainVAO=gl.createVertexArray();gl.bindVertexArray(mainVAO);
+function attr(name,data,buffer){gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);var loc=gl.getAttribLocation(program,name);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,3,gl.FLOAT,false,0,0);}
+attr('position',vertices,posBuffer);attr('normal',normals,normBuffer);attr('color',colors,colBuffer);gl.bindVertexArray(null);
+var eyeLoc=gl.getUniformLocation(program,'eye'),angleLoc=gl.getUniformLocation(program,'angles'),projLoc=gl.getUniformLocation(program,'proj');
+gl.enable(gl.DEPTH_TEST);gl.clearColor(.105,.135,.13,1);
+var cam={x:-.5,y:1.7,z:8.8,yaw:0,pitch:.03};
+var views={hero:[-.5,8.8,0,.03],left:[-2.6,.5,Math.PI/2,.01],right:[2.6,.5,-Math.PI/2,.01],rear:[.3,-6.0,Math.PI,.02],ceiling:[0,2.2,0,.95]};
+function hAt(z){if(z<-7.6)return .8;if(z<-7.08)return .64;if(z<-6.56)return .44;if(z<-6.04)return .24;return 0;}
+function setView(name){var v=views[name];cam.x=v[0];cam.z=v[1];cam.yaw=v[2];cam.pitch=v[3];cam.y=1.7+hAt(cam.z);document.querySelectorAll('[data-view]').forEach(function(b){b.classList.toggle('active',b.dataset.view===name)});}
+document.querySelectorAll('[data-view]').forEach(function(btn){btn.addEventListener('click',function(){setView(btn.dataset.view);});});
+document.getElementById('mapBtn').addEventListener('click',function(){alert('A — խորան / դիմացի պատ\\nB — աջ պատ\\nC — մուտք / հետևի պատ\\nD — ձախ պատ\\n\\nՉափերը փորձնական են՝ ոչ հաստատված։');});
+var keys={},joy={x:0,y:0},joyId=null,lookId=null,lastX=0,lastY=0;
+window.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;if('wasdarrowup arrowdown arrowleft arrowright'.includes(e.key.toLowerCase()))e.preventDefault();});
+window.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;});
+var joyEl=document.getElementById('joystick'),nub=document.getElementById('nub');
+function moveJoy(e){var r=joyEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;var dx=(e.clientX-cx)/43,dy=(e.clientY-cy)/43,l=Math.max(1,Math.hypot(dx,dy));joy.x=dx/l;joy.y=dy/l;nub.style.transform='translate('+(joy.x*39)+'px,'+(joy.y*39)+'px)';}
+joyEl.addEventListener('pointerdown',function(e){joyId=e.pointerId;joyEl.setPointerCapture(e.pointerId);moveJoy(e);});
+joyEl.addEventListener('pointermove',function(e){if(e.pointerId===joyId)moveJoy(e);});
+function resetJoy(e){if(e.pointerId!==joyId)return;joyId=null;joy.x=joy.y=0;nub.style.transform='';}
+joyEl.addEventListener('pointerup',resetJoy);joyEl.addEventListener('pointercancel',resetJoy);
+canvas.addEventListener('pointerdown',function(e){if(lookId===null){lookId=e.pointerId;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId);}});
+canvas.addEventListener('pointermove',function(e){if(e.pointerId!==lookId)return;cam.yaw+=(e.clientX-lastX)*.004;cam.pitch=Math.max(-1.05,Math.min(1.12,cam.pitch-(e.clientY-lastY)*.004));lastX=e.clientX;lastY=e.clientY;});
+canvas.addEventListener('pointerup',function(e){if(e.pointerId===lookId)lookId=null;});canvas.addEventListener('pointercancel',function(e){if(e.pointerId===lookId)lookId=null;});
+function slide(nx,nz){nx=Math.max(-4.96,Math.min(4.96,nx));nz=Math.max(-8.68,Math.min(9.0,nz));
+cols.forEach(function(z){[-4.42,4.42].forEach(function(x){var dx=nx-x,dz=nz-z,d=Math.hypot(dx,dz),min=.73;if(d<min){nx=x+dx/Math.max(.001,d)*min;nz=z+dz/Math.max(.001,d)*min;}});});
+if(nz<-8.0&&Math.abs(nx)<1.65)nz=-8.0;
+cam.x=nx;cam.z=nz;cam.y=1.7+hAt(nz);}
+
+/* ===== Crypt Projection G1 isolated lab: v4.1 geometry stays unchanged ===== */
+var $p=id=>document.getElementById(id);
+var masterImage=null,sourceName=null,srcUrl=null,masterW=0,masterH=0,projMode=0,depthDirty=true;
+var projector={x:cam.x,y:cam.y,z:cam.z,yaw:cam.yaw,pitch:cam.pitch,fov:68};
+var projVpLoc=gl.getUniformLocation(program,'projectorVP'),hasMasterLoc=gl.getUniformLocation(program,'hasMaster'),projectionModeLoc=gl.getUniformLocation(program,'projectionMode');
+var masterTexture=gl.createTexture();
+gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,masterTexture);
+gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([150,150,150,255]));
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+var depthP=gl.createProgram();
+var dVS=compile(gl.VERTEX_SHADER,`#version 300 es
+precision highp float;layout(location=0) in vec3 position;uniform mat4 projectorVP;void main(){gl_Position=projectorVP*vec4(position,1.);}`);
+var dFS=compile(gl.FRAGMENT_SHADER,`#version 300 es
+precision highp float;void main(){}`);
+gl.attachShader(depthP,dVS);gl.attachShader(depthP,dFS);gl.linkProgram(depthP);
+if(!gl.getProgramParameter(depthP,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(depthP));
+var depthVAO=gl.createVertexArray();gl.bindVertexArray(depthVAO);gl.bindBuffer(gl.ARRAY_BUFFER,posBuffer);
+gl.enableVertexAttribArray(0);gl.vertexAttribPointer(0,3,gl.FLOAT,false,0,0);gl.bindVertexArray(null);
+var depthFBO=gl.createFramebuffer(),depthTexture=gl.createTexture(),depthSize=1024;
+gl.bindTexture(gl.TEXTURE_2D,depthTexture);
+gl.texImage2D(gl.TEXTURE_2D,0,gl.DEPTH_COMPONENT24,depthSize,depthSize,0,gl.DEPTH_COMPONENT,gl.UNSIGNED_INT,null);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+gl.bindFramebuffer(gl.FRAMEBUFFER,depthFBO);
+gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.DEPTH_ATTACHMENT,gl.TEXTURE_2D,depthTexture,0);
+gl.drawBuffers([gl.NONE]);gl.readBuffer(gl.NONE);
+if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE)throw Error('Projection depth framebuffer incomplete');
+gl.bindFramebuffer(gl.FRAMEBUFFER,null);
+gl.useProgram(program);gl.uniform1i(gl.getUniformLocation(program,'masterTex'),0);gl.uniform1i(gl.getUniformLocation(program,'shadowDepth'),1);
+gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,depthTexture);
+gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,masterTexture);
+var projMarkers={},markNext=null;
+var pointMap={altar:[0,2.35,-9.2],pillar:[-4.42,4.88,-3.5],wall:[-5.52,3,-4.4],vault:[0,6.33,-4.4]};
+function mx(a,b){var c=new Float32Array(16);for(var j=0;j<4;j++)for(var i=0;i<4;i++)for(var k=0;k<4;k++)c[i+j*4]+=a[i+k*4]*b[k+j*4];return c;}
+function makeLook(eye,dir){var d=[-dir[0],-dir[1],-dir[2]],len=Math.hypot(...d);d=d.map(v=>v/len);
+var r=[d[2],0,-d[0]],rl=Math.hypot(...r);r=r.map(v=>v/rl);
+var up=[d[1]*r[2]-d[2]*r[1],d[2]*r[0]-d[0]*r[2],d[0]*r[1]-d[1]*r[0]];
+return new Float32Array([r[0],up[0],d[0],0,r[1],up[1],d[1],0,r[2],up[2],d[2],0,-(r[0]*eye[0]+r[1]*eye[1]+r[2]*eye[2]),-(up[0]*eye[0]+up[1]*eye[1]+up[2]*eye[2]),-(d[0]*eye[0]+d[1]*eye[1]+d[2]*eye[2]),1]);}
+function buildProjectorVP(){
+var aspect=masterW&&masterH?masterW/masterH:16/9,f=1/Math.tan(projector.fov*Math.PI/360),near=.05,far=55;
+var p=new Float32Array([f/aspect,0,0,0,0,f,0,0,0,0,(far+near)/(near-far),-1,0,0,2*far*near/(near-far),0]);
+var a=projector.yaw,b=projector.pitch,dir=[Math.sin(a)*Math.cos(b),Math.sin(b),-Math.cos(a)*Math.cos(b)];
+return mx(p,makeLook([projector.x,projector.y,projector.z],dir));
+}
+function rebuildProjectorDepth(){
+depthDirty=false;
+gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,null);
+gl.bindFramebuffer(gl.FRAMEBUFFER,depthFBO);gl.viewport(0,0,depthSize,depthSize);
+gl.clearDepth(1);gl.depthMask(true);gl.clear(gl.DEPTH_BUFFER_BIT);
+gl.useProgram(depthP);gl.uniformMatrix4fv(gl.getUniformLocation(depthP,'projectorVP'),false,buildProjectorVP());
+gl.bindVertexArray(depthVAO);gl.drawArrays(gl.TRIANGLES,0,vertices.length/3);gl.bindVertexArray(null);
+gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,depthTexture);
+gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,masterTexture);gl.useProgram(program);
+}
+function labStatus(msg){$p('labStatus').textContent=msg;}
+function syncProjectorFields(){
+for(var k of ['X','Y','Z','Yaw','Pitch','Fov']){var key={X:'x',Y:'y',Z:'z',Yaw:'yaw',Pitch:'pitch',Fov:'fov'}[k];$p('p'+k).value=key==='yaw'||key==='pitch'?(projector[key]*180/Math.PI).toFixed(2):projector[key].toFixed(2);}
+}
+function projectMark(pt){
+var m=buildProjectorVP(),x=pt[0],y=pt[1],z=pt[2];
+var w=m[3]*x+m[7]*y+m[11]*z+m[15];if(w<=0)return null;
+var xx=(m[0]*x+m[4]*y+m[8]*z+m[12])/w,yy=(m[1]*x+m[5]*y+m[9]*z+m[13])/w;
+return {u:xx/2+.5,v:.5-yy/2};
+}
+function rmsMarks(){var n=0,sum=0;Object.keys(projMarkers).forEach(id=>{var p=projectMark(pointMap[id]),q=projMarkers[id];if(!p)return;var dx=(p.u-q.u)*masterW,dy=(p.v-q.v)*masterH;sum+=dx*dx+dy*dy;n++;});return n?Math.sqrt(sum/n):null;}
+function updateLabStatus(){var n=Object.keys(projMarkers).length,r=rmsMarks();labStatus('Source: '+(sourceName||'NONE')+' | Marks: '+n+' | RMS: '+(r===null?'not measured':r.toFixed(1)+' px')+'\nLab projection limited to a left wall bay and pilaster. RMS is image landmark error, NOT geometry accuracy.');}
+function chooseProjMode(n){projMode=n;$p('showProj').textContent=n===1?'Projection ON':'Projection OFF';updateLabStatus();}
+$p('showProj').onclick=()=>chooseProjMode(projMode===1?0:1);
+$p('showCoverage').onclick=()=>chooseProjMode(projMode===2?0:2);
+$p('lockCamera').onclick=()=>{projector={x:cam.x,y:cam.y,z:cam.z,yaw:cam.yaw,pitch:cam.pitch,fov:68};depthDirty=true;syncProjectorFields();updateLabStatus();};
+for(var k of ['X','Y','Z','Yaw','Pitch','Fov']){(function(K){var key={X:'x',Y:'y',Z:'z',Yaw:'yaw',Pitch:'pitch',Fov:'fov'}[K];$p('p'+K).onchange=()=>{var v=Number($p('p'+K).value);if(!Number.isFinite(v))return;if(key==='fov')v=Math.max(25,Math.min(110,v));if(key==='pitch')v=Math.max(-85,Math.min(85,v));if(key==='yaw'||key==='pitch')v=v*Math.PI/180;projector[key]=v;depthDirty=true;updateLabStatus();};})(k);}
+$p('masterUpload').onchange=evt=>{
+var file=evt.target.files&&evt.target.files[0];if(!file)return;
+var url=URL.createObjectURL(file),img=new Image();
+img.onload=()=>{var old=srcUrl;srcUrl=url;masterImage=img;masterW=img.naturalWidth;masterH=img.naturalHeight;sourceName=file.name;projMarkers={};
+gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,masterTexture);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,img);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,false);
+$p('projOverlay').src=url;if(old)URL.revokeObjectURL(old);depthDirty=true;chooseProjMode(1);};
+img.onerror=()=>{URL.revokeObjectURL(url);labStatus('Cannot open selected image');};img.src=url;};
+function updateOverlay(){var on=$p('compareOverlay').checked&&!!masterImage;$p('projOverlay').style.display=on?'block':'none';$p('projOverlay').style.opacity=($p('overlayLevel').value/100).toString();}
+$p('compareOverlay').onchange=updateOverlay;$p('overlayLevel').oninput=updateOverlay;
+$p('markLandmark').onclick=()=>{if(!masterImage){labStatus('Choose a source image first');return;}markNext=$p('landmarkSelect').value;var overlay=$p('projOverlay');$p('compareOverlay').checked=true;updateOverlay();overlay.style.pointerEvents='auto';labStatus('Tap '+markNext+' on the source image.');};
+$p('projOverlay').onclick=e=>{if(!markNext)return;var r=e.currentTarget.getBoundingClientRect(),aspect=masterW/masterH,ww=r.width,hh=r.height;if(ww/hh>aspect)ww=hh*aspect;else hh=ww/aspect;
+var xx=r.left+(r.width-ww)/2,yy=r.top+(r.height-hh)/2;
+var u=(e.clientX-xx)/ww,v=(e.clientY-yy)/hh;if(u>=0&&u<=1&&v>=0&&v<=1)projMarkers[markNext]={u,v};
+markNext=null;e.currentTarget.style.pointerEvents='none';updateLabStatus();};
+function saveJSON(data,name){var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);}
+$p('downloadCamera').onclick=()=>saveJSON({revision:'G1',geometry:'v4.1 locked',reference:sourceName,resolution:[masterW,masterH],camera:{...projector},sourceLandmarks:projMarkers,rmsPixels:rmsMarks(),warning:'Synthetic/manual confidence only; no verified geometry alignment'},'crypt_projection_g1_camera.json');
+$p('captureQA').onclick=async()=>{
+if(!masterImage){labStatus('Choose source image before QA');return;}
+var keep={...cam},oldMode=projMode,views=[],tiles=[];
+$p('compareOverlay').checked=false;updateOverlay();
+for(var d of [0,15,30]){
+var offset=Math.sin(d*Math.PI/180)*2.25;cam.x=projector.x+offset;cam.z=projector.z;
+cam.y=projector.y;cam.yaw=projector.yaw+d*Math.PI/180;cam.pitch=projector.pitch;
+projMode=2;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+var pix=new Uint8Array(canvas.width*canvas.height*4);gl.readPixels(0,0,canvas.width,canvas.height,gl.RGBA,gl.UNSIGNED_BYTE,pix);
+var hit=0,miss=0;for(var i=0;i<pix.length;i+=4){if(pix[i+1]>175&&pix[i]<110)hit++;else if(pix[i]>175&&pix[i+1]<125&&pix[i+2]>75)miss++;}
+projMode=1;await new Promise(r=>requestAnimationFrame(()=>requestAnimationFrame(r)));
+tiles.push(canvas.toDataURL('image/png'));
+views.push({deltaDegrees:d,projectedPixels:hit,uncoveredPixels:miss,coveredRatio:hit+miss?hit/(hit+miss):null});
+}
+Object.assign(cam,keep);projMode=oldMode;saveJSON({revision:'G1',source:sourceName,views,landmarkRmsPx:rmsMarks(),caution:'Coverage of visible pixels in a bounded wall/pilaster shader; 3D geometry unverified'},'crypt_projection_g1_qa.json');
+var sheet=document.createElement('canvas');sheet.width=960;sheet.height=260;var ctx=sheet.getContext('2d');ctx.fillStyle='#101e20';ctx.fillRect(0,0,960,260);
+for(var j=0;j<3;j++){var pic=new Image();pic.src=tiles[j];await pic.decode();ctx.drawImage(pic,j*320,0,320,215);ctx.fillStyle='white';ctx.font='14px sans-serif';ctx.fillText('+'+views[j].deltaDegrees+'° · '+(views[j].coveredRatio==null?'N/A':(views[j].coveredRatio*100).toFixed(1)+'%'),j*320+8,237);}
+sheet.toBlob(blob=>{var url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='crypt_projection_g1_qa.png';a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);},'image/png');
+updateLabStatus();
+};
+syncProjectorFields();updateLabStatus();
+window.__cryptG1={info:()=>({webgl2:!!gl,master:!!masterImage,sourceName,projector:{...projector},rms:rmsMarks(),mode:projMode,triangles}),setProjector:(v)=>{Object.assign(projector,v);depthDirty=true;syncProjectorFields();},version:'v4.1-G1'};
+/* ===== end isolated integration ===== */
+
+
+/* G2a: UV atlas and glTF exporter. This is an experiment, not a verified render.
+ * No external network or remote services are called; the local master stays in memory.
+ */
+var g2bake=null,g2lib=null,g2render=null;
+async function getG2Lib(){
+ if(!g2lib)g2lib=await import('./src/atlas-export.mjs');
+ return g2lib;
+}
+function g2Status(t){$p('bakeStatus').textContent=t;}
+function g2Download(data,name,type){
+ const blob=data instanceof Blob?data:new Blob([data],{type:type||'application/octet-stream'});
+ const url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=name;
+ document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+}
+function g2Invalidate(){
+ g2bake=null;for(const id of ['downloadAtlas','downloadMask','exportGLB'])$p(id).disabled=true;
+ g2Status('Rebake required after image or camera changes.');
+}
+const oldUpdateLabStatus=updateLabStatus;
+function g2SetUI(){for(const id of ['downloadAtlas','downloadMask','exportGLB'])$p(id).disabled=!g2bake;}
+function g2GpuSetup(library){
+ if(g2render)return g2render;
+ const vertCount=vertices.length/3,atlas=library.quadAtlasUV(vertCount);
+ const vsrc=`#version 300 es
+ precision highp float;
+ layout(location=0)in vec3 position;
+ layout(location=1)in vec3 color;
+ layout(location=2)in vec2 atlasUV;
+ uniform mat4 projectorVP;
+ out vec3 vWorld;out vec3 vColor;out vec4 vClip;
+ void main(){vWorld=position;vColor=color;vClip=projectorVP*vec4(position,1.);
+ gl_Position=vec4(atlasUV.x*2.-1.,1.-atlasUV.y*2.,0.,1.);}
+ `;
+ const fsrc=`#version 300 es
+ precision highp float;
+ in vec3 vWorld;in vec3 vColor;in vec4 vClip;
+ uniform sampler2D masterTex;uniform sampler2D shadowDepth;
+ uniform int hasMaster;uniform int bakeMode;
+ out vec4 outColor;
+ void main(){
+ bool target=vWorld.x<-3.8 && vWorld.z>-5.2 && vWorld.z<-2.0;
+ vec3 ndc=vClip.xyz/max(vClip.w,0.0001);
+ vec2 imageUV=ndc.xy*.5+.5;float depth=ndc.z*.5+.5;
+ bool shown=hasMaster==1 && target && vClip.w>.001 && depth>0.&&depth<1. &&
+ all(greaterThan(imageUV,vec2(.002)))&&all(lessThan(imageUV,vec2(.998))) &&
+ depth<=texture(shadowDepth,imageUV).r+.005;
+ if(bakeMode==1) {
+   outColor=vec4(!target?vec3(.08,.12,.35):(shown?vec3(.13,.9,.62):vec3(.97,.25,.57)),1.);
+ }else{
+   outColor=vec4(shown?texture(masterTex,imageUV).rgb:vColor,1.);
+ }
+ }`;
+ const program2=gl.createProgram();
+ gl.attachShader(program2,compile(gl.VERTEX_SHADER,vsrc));
+ gl.attachShader(program2,compile(gl.FRAGMENT_SHADER,fsrc));gl.linkProgram(program2);
+ if(!gl.getProgramParameter(program2,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program2)||'G2 shaders failed');
+ const vao=gl.createVertexArray(),buffers=[];
+ gl.bindVertexArray(vao);
+ for(const [i,array,width] of [[0,new Float32Array(vertices),3],[1,new Float32Array(colors),3],[2,atlas.uv,2]]){
+  const buf=gl.createBuffer();buffers.push(buf);gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,array,gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(i);gl.vertexAttribPointer(i,width,gl.FLOAT,false,0,0);
+ }
+ gl.bindVertexArray(null);
+ return g2render={program:program2,vao,buffers,atlas};
+}
+function pixelsToCanvas(bytes,size){
+ const canvas=document.createElement('canvas');canvas.width=size;canvas.height=size;
+ const ctx=canvas.getContext('2d',{willReadFrequently:true});
+ const pixels=ctx.createImageData(size,size);const stride=size*4;
+ // OpenGL readPixels is bottom-to-top, Canvas ImageData is top-to-bottom.
+ for(let y=0;y<size;y++)pixels.data.set(bytes.subarray((size-1-y)*stride,(size-y)*stride),y*stride);
+ ctx.putImageData(pixels,0,0);return canvas;
+}
+function g2Pass(r,size,mode){
+ const tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);
+ gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA8,size,size,0,gl.RGBA,gl.UNSIGNED_BYTE,null);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.NEAREST);
+ gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.NEAREST);
+ const fb=gl.createFramebuffer();gl.bindFramebuffer(gl.FRAMEBUFFER,fb);
+ gl.framebufferTexture2D(gl.FRAMEBUFFER,gl.COLOR_ATTACHMENT0,gl.TEXTURE_2D,tex,0);
+ if(gl.checkFramebufferStatus(gl.FRAMEBUFFER)!==gl.FRAMEBUFFER_COMPLETE){
+  gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(fb);gl.deleteTexture(tex);throw Error('Atlas framebuffer incomplete');
+ }
+ gl.viewport(0,0,size,size);gl.disable(gl.DEPTH_TEST);gl.clearColor(0,0,0,0);
+ gl.clear(gl.COLOR_BUFFER_BIT);
+ gl.useProgram(r.program);
+ gl.uniformMatrix4fv(gl.getUniformLocation(r.program,'projectorVP'),false,buildProjectorVP());
+ gl.uniform1i(gl.getUniformLocation(r.program,'hasMaster'),masterImage?1:0);
+ gl.uniform1i(gl.getUniformLocation(r.program,'bakeMode'),mode);
+ gl.uniform1i(gl.getUniformLocation(r.program,'masterTex'),0);
+ gl.uniform1i(gl.getUniformLocation(r.program,'shadowDepth'),1);
+ gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,masterTexture);
+ gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,depthTexture);
+ gl.bindVertexArray(r.vao);gl.drawArrays(gl.TRIANGLES,0,r.atlas.vertexCount);gl.bindVertexArray(null);
+ const bytes=new Uint8Array(size*size*4);
+ gl.readPixels(0,0,size,size,gl.RGBA,gl.UNSIGNED_BYTE,bytes);
+ gl.bindFramebuffer(gl.FRAMEBUFFER,null);gl.deleteFramebuffer(fb);gl.deleteTexture(tex);
+ gl.activeTexture(gl.TEXTURE1);gl.bindTexture(gl.TEXTURE_2D,depthTexture);
+ gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,masterTexture);
+ gl.enable(gl.DEPTH_TEST);gl.useProgram(program);
+ return {canvas:pixelsToCanvas(bytes,size),bytes};
+}
+async function g2Bake(){
+ if(!masterImage){g2Status('Upload local approved master JPG/PNG first.');return;}
+ const btn=$p('bakeAtlas');btn.disabled=true;g2Status('Baking projected albedo and coverage mask…');
+ try{
+  const lib=await getG2Lib(),r=g2GpuSetup(lib),size=Number($p('atlasSize').value);
+  if(depthDirty)rebuildProjectorDepth();
+  const img=g2Pass(r,size,0),mask=g2Pass(r,size,1);
+  let projected=0,uncovered=0;
+  for(let i=0;i<mask.bytes.length;i+=4){
+   const rr=mask.bytes[i],gg=mask.bytes[i+1],bb=mask.bytes[i+2],aa=mask.bytes[i+3];
+   if(aa<200)continue;
+   if(gg>160&&rr<100&&bb>90)projected++;
+   else if(rr>190&&gg<130&&bb>90)uncovered++;
+  }
+  const ratio=projected+uncovered?projected/(projected+uncovered):null;
+  g2bake={img,mask,size,lib,uv:r.atlas.uv,faces:r.atlas.faceCount,projected,uncovered,ratio,source:sourceName,camera:{...projector}};
+  g2SetUI();
+  g2Status(size+'² atlas | '+r.atlas.faceCount+' quads | projected '+(ratio===null?'N/A':(ratio*100).toFixed(1)+'%')+' of target pixels. NON-target surfaces use draft colors. Not yet GPU-validated on real Android.');
+ }catch(error){g2Status('Bake failed: '+error.message);}
+ finally{btn.disabled=false;}
+}
+async function g2CanvasPNG(c){return new Promise((resolve,reject)=>c.toBlob(blob=>blob?resolve(blob):reject(Error('PNG encoding failed')),'image/png'));}
+$p('bakeAtlas').addEventListener('click',g2Bake);
+$p('atlasSize').addEventListener('change',g2Invalidate);
+$p('downloadAtlas').addEventListener('click',async()=>{if(g2bake)g2Download(await g2CanvasPNG(g2bake.img.canvas),'crypt_g2_atlas.png','image/png');});
+$p('downloadMask').addEventListener('click',async()=>{if(g2bake)g2Download(await g2CanvasPNG(g2bake.mask.canvas),'crypt_g2_coverage.png','image/png');});
+$p('exportGLB').addEventListener('click',async()=>{
+ if(!g2bake)return;
+ try{
+  const png=new Uint8Array(await (await g2CanvasPNG(g2bake.img.canvas)).arrayBuffer());
+  const bytes=g2bake.lib.makeGLB({positions:new Float32Array(vertices),normals:new Float32Array(normals),uv:g2bake.uv,pngBytes:png,name:'Emerald Crypt v4.1 G2 lab'});
+  g2Download(bytes,'crypt_v41_projection_g2.glb','model/gltf-binary');
+  g2Download(new Blob([JSON.stringify({source:g2bake.source,projector:g2bake.camera,atlasSize:g2bake.size,quads:g2bake.faces,targetCoveredPixels:g2bake.projected,targetUncoveredPixels:g2bake.uncovered,coverageRatio:g2bake.ratio,warning:'G2a single-source experimental bake, image/geometry alignment not verified'},null,2)],{type:'application/json'}),'crypt_g2_bake_manifest.json');
+  g2Status('GLB generated ('+(bytes.length/1024/1024).toFixed(2)+' MiB). Independent import and visual QA still required.');
+ }catch(error){g2Status('Export failed: '+error.message);}
+});
+const origUploadChange=$p('masterUpload').onchange;
+$p('masterUpload').onchange=e=>{g2Invalidate();origUploadChange(e);};
+const origUseCamera=$p('lockCamera').onclick;
+$p('lockCamera').onclick=e=>{g2Invalidate();origUseCamera(e);};
+for(const k of ['X','Y','Z','Yaw','Pitch','Fov']){
+ const el=$p('p'+k),orig=el.onchange;el.onchange=e=>{g2Invalidate();orig(e);};
+}
+window.__cryptG2={version:'G2a',getState:()=>({baked:!!g2bake,atlasSize:g2bake?.size||null,covered:g2bake?.projected||null,ratio:g2bake?.ratio??null,glbReady:!!g2bake,sourceUploaded:!!masterImage}),bake:g2Bake};
+
+var last=performance.now(),acc=0,nframes=0;
+function tick(now){var dt=Math.min(.05,(now-last)/1000);last=now;var f=(keys['w']||keys['arrowup']?1:0)-(keys['s']||keys['arrowdown']?1:0)-joy.y;
+var r=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0)+joy.x;
+var l=Math.max(1,Math.hypot(f,r));f/=l;r/=l;
+if(f||r){var speed=3.25*dt;slide(cam.x+speed*(f*Math.sin(cam.yaw)+r*Math.cos(cam.y)),cam.z+speed*(-f*Math.cos(cam.yaw)+r*Math.sin(cam.y)));}
+var w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(window.devicePixelRatio||1,1.5),rw=Math.round(w*dpr),rh=Math.round(h*dpr);
+if(canvas.width!==rw||canvas.height!==rh){canvas.width=rw;canvas.height=rh;gl.viewport(0,0,rw,rh);}
+var aspect=rw/Math.max(1,rh),fv=1/Math.tan(68*Math.PI/360),near=.06,far=55;
+var p=new Float32Array([fv/aspect,0,0,0,0,fv,0,0,0,0,(far+near)/(near-far),-1,0,0,2*far*near/(near-far),0]);
+gl.uniformMatrix4fv(projLoc,false,p);gl.uniform3f(eyeLoc,cam.x,cam.y,cam.z);gl.uniform2f(angleLoc,cam.yaw,cam.pitch);
+if(depthDirty)rebuildProjectorDepth();
+gl.useProgram(program);gl.uniformMatrix4fv(projVpLoc,false,buildProjectorVP());gl.uniform1i(hasMasterLoc,!!masterImage?1:0);gl.uniform1i(projectionModeLoc,projMode);
+gl.viewport(0,0,canvas.width,canvas.height);
+gl.bindVertexArray(mainVAO);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.drawArrays(gl.TRIANGLES,0,vertices.length/3);gl.bindVertexArray(null);
+acc+=dt;nframes++;if(acc>1){fpsEl.textContent='FPS: '+Math.round(nframes/acc)+' · '+triangles+' triangles';acc=0;nframes=0;}
+requestAnimationFrame(tick);}
+requestAnimationFrame(tick);
+})();
+</script></body></html>
