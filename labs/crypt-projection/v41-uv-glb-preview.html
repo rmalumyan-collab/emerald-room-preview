@@ -248,7 +248,7 @@ window.__cryptG1={info:()=>({webgl2:!!gl,master:!!masterImage,sourceName,project
  */
 var g2bake=null,g2lib=null,g2render=null;
 async function getG2Lib(){
- if(!g2lib)g2lib=Promise.all([import('./src/atlas-export.mjs'),import('./src/weighted-atlas.mjs')]).then(([a,w])=>({...a,...w}));
+ if(!g2lib)g2lib=Promise.all([import('./src/atlas-export.mjs'),import('./src/weighted-atlas.mjs'),import('./src/scene-contract.mjs')]).then(([a,w,c])=>({...a,...w,...c}));
  return g2lib;
 }
 function g2Status(t){$p('bakeStatus').textContent=t;}
@@ -388,7 +388,15 @@ $p('exportGLB').addEventListener('click',async()=>{
   const png=new Uint8Array(await (await g2CanvasPNG(g2bake.img.canvas)).arrayBuffer());
   const bytes=g2bake.lib.makeGLB({positions:new Float32Array(vertices),normals:new Float32Array(normals),uv:g2bake.uv,pngBytes:png,name:'Emerald Crypt v4.1 G2b weighted atlas',materialMode:$p('materialMode').value});
   g2Download(bytes,'crypt_v41_projection_g2.glb','model/gltf-binary');
-  g2Download(new Blob([JSON.stringify({source:g2bake.source,projector:g2bake.camera,atlasSize:g2bake.size,quads:g2bake.faces,uvPacking:'world-area-weighted',gutterPixels:2,materialMode:$p('materialMode').value,materialWarning:$p('materialMode').value==='pbr'?'Photographic source shadows may be baked into color; PBR is not physically calibrated':'Unlit mode is for reference QA, not dynamic illumination',targetCoveredPixels:g2bake.projected,targetUncoveredPixels:g2bake.uncovered,coverageRatio:g2bake.ratio,warning:'G2b one-source only; camera alignment, GPU atlas and PBR quality not yet verified'},null,2)],{type:'application/json'}),'crypt_g2_bake_manifest.json');
+  const proof=g2bake.lib.createProjectionManifest({
+    sourceName:g2bake.source,sourceWidth:masterW,sourceHeight:masterH,
+    camera:g2bake.camera,landmarks:projMarkers,rmsPx:rmsMarks(),
+    triangleCount:triangles,quadCount:g2bake.faces,
+    atlasSize:g2bake.size,materialMode:$p('materialMode').value,
+    coverageRatio:g2bake.ratio
+  });
+  g2bake.lib.validateProjectionManifest(proof);
+  g2Download(new Blob([JSON.stringify(proof,null,2)],{type:'application/json'}),'crypt_g2_scene_manifest.json');
   g2Status('GLB generated ('+(bytes.length/1024/1024).toFixed(2)+' MiB). Independent import and visual QA still required.');
  }catch(error){g2Status('Export failed: '+error.message);}
 });
@@ -399,7 +407,7 @@ $p('lockCamera').onclick=e=>{g2Invalidate();origUseCamera(e);};
 for(const k of ['X','Y','Z','Yaw','Pitch','Fov']){
  const el=$p('p'+k),orig=el.onchange;el.onchange=e=>{g2Invalidate();orig(e);};
 }
-window.__cryptG2={version:'G2b',getState:()=>({baked:!!g2bake,atlasSize:g2bake?.size||null,covered:g2bake?.projected||null,ratio:g2bake?.ratio??null,glbReady:!!g2bake,sourceUploaded:!!masterImage}),bake:g2Bake};
+window.__cryptG2={version:'G2b-manifest',getState:()=>({baked:!!g2bake,atlasSize:g2bake?.size||null,covered:g2bake?.projected||null,ratio:g2bake?.ratio??null,glbReady:!!g2bake,sourceUploaded:!!masterImage}),bake:g2Bake};
 
 var last=performance.now(),acc=0,nframes=0;
 function tick(now){var dt=Math.min(.05,(now-last)/1000);last=now;var f=(keys['w']||keys['arrowup']?1:0)-(keys['s']||keys['arrowdown']?1:0)-joy.y;
