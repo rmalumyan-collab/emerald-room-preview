@@ -92,3 +92,12 @@ Each work session:
 Port **only the pure camera-landmark/projection math and tests** into `labs/crypt-projection/` first; keep Game lane unchanged. Follow with controlled one-wall real-source projection. Avoid another full editor rewrite.
 
 Issue: https://github.com/rmalumyan-collab/emerald-room-preview/issues/1
+
+## 8. G2a integration checkpoint — 2026-11-21
+
+- Implemented `labs/crypt-projection/v41-uv-glb-preview.html`, a **G2a standalone experimental view** derived from unchanged v4.1 geometry.
+- Implemented `labs/crypt-projection/src/atlas-export.mjs` (quad UV atlas, GLB serialization with embedded PNG); `tests/g2_atlas_glb.mjs` and `README_G2.md` document tests and limitations.
+- G2a atlas uses **one** local source image, depth-aware sampling on the designated left wall bay / pilaster, fallback face colors elsewhere, and a coverage mask distinguishing projected versus missing target pixels.
+- Evidence: module syntax and test-vector UV/GLB structure PASS in V8; preview inline JS syntax PASS; `main/index.html` SHA is unchanged. **Actual phone WebGL2 shader, real master image alignment, atlas quality, and independent import of a real generated GLB NOT VERIFIED.**
+- G2a does not yet implement second camera, seam dilation, full UV bake across all source-covered walls, or mobile optimization.
+- Keep Pull Request #2 **draft**, do not merge until G2a real-device QA.
