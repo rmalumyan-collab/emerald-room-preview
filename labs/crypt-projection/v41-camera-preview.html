@@ -72,7 +72,7 @@ void main(){
  // x/z are supplied separately as scene-space position.
  if(projectionMode==0 || !target) visible=false;
  vec3 projected=texture(masterTex,uv).rgb;
- if(projectionMode==2)outColor=vec4(visible?vec3(.13,.9,.62):vec3(.97,.25,.57),1.);
+ if(projectionMode==2)outColor=vec4(!target?normalColor:(visible?vec3(.13,.9,.62):vec3(.97,.25,.57)),1.);
  else outColor=vec4(visible?projected:normalColor,1.);
 }`;
 function compile(type,src){var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
@@ -200,7 +200,7 @@ function chooseProjMode(n){projMode=n;$p('showProj').textContent=n===1?'Projecti
 $p('showProj').onclick=()=>chooseProjMode(projMode===1?0:1);
 $p('showCoverage').onclick=()=>chooseProjMode(projMode===2?0:2);
 $p('lockCamera').onclick=()=>{projector={x:cam.x,y:cam.y,z:cam.z,yaw:cam.yaw,pitch:cam.pitch,fov:68};depthDirty=true;syncProjectorFields();updateLabStatus();};
-for(var k of ['X','Y','Z','Yaw','Pitch','Fov']){(function(K){var key={X:'x',Y:'y',Z:'z',Yaw:'yaw',Pitch:'pitch',Fov:'fov'}[K];$p('p'+K).onchange=()=>{var v=Number($p('p'+K).value);if(!Number.isFinite(v))return;if(key==='fov')v=Math.max(25,Math.min(110,v));if(key==='yaw'||key==='pitch')v=v*Math.PI/180;projector[key]=v;depthDirty=true;updateLabStatus();};})(k);}
+for(var k of ['X','Y','Z','Yaw','Pitch','Fov']){(function(K){var key={X:'x',Y:'y',Z:'z',Yaw:'yaw',Pitch:'pitch',Fov:'fov'}[K];$p('p'+K).onchange=()=>{var v=Number($p('p'+K).value);if(!Number.isFinite(v))return;if(key==='fov')v=Math.max(25,Math.min(110,v));if(key==='pitch')v=Math.max(-85,Math.min(85,v));if(key==='yaw'||key==='pitch')v=v*Math.PI/180;projector[key]=v;depthDirty=true;updateLabStatus();};})(k);}
 $p('masterUpload').onchange=evt=>{
 var file=evt.target.files&&evt.target.files[0];if(!file)return;
 var url=URL.createObjectURL(file),img=new Image();
