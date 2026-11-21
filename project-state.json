@@ -55,8 +55,8 @@
     },
     "projection": {
       "owner": "this integration chat / lab",
-      "status": "G1_preview_code_committed_not_gpu_verified",
-      "next": "User performs Android WebGL2 smoke test with approved local master render; measure RMS/0-15-30 coverage before UV/GLB integration"
+      "status": "G2a_uv_glb_code_committed_not_gpu_verified",
+      "next": "On actual Android GPU: load local master render, calibrate camera, bake atlas, download GLB, independently open and compare 0/15/30; record FPS and artifacts."
     }
   },
   "gates": [
@@ -74,12 +74,14 @@
     {
       "id": "G2",
       "name": "projection multi-view coverage",
-      "status": "not_started"
+      "status": "partial_single_source_only",
+      "note": "G2a single-source source-or-fallback atlas code committed; multi-view blending/seam fixing not implemented."
     },
     {
       "id": "G3",
       "name": "UV GLB mobile QA",
-      "status": "not_started"
+      "status": "partial_code_only",
+      "note": "Atlas PNG + mask PNG + embedded PNG GLB exporter code and deterministic GLB structure checks exist; actual GPU bake/reimport not verified."
     }
   ],
   "evidence_rule": "Do not describe synthetic math tests as photorealistic alignment or phone runtime verification",
@@ -107,6 +109,34 @@
       "mobile FPS",
       "UV atlas and GLB integration for v4.1"
     ],
-    "sourceImageCommitted": false
+    "sourceImageCommitted": false,
+    "g2a": {
+      "viewer": "labs/crypt-projection/v41-uv-glb-preview.html",
+      "library": "labs/crypt-projection/src/atlas-export.mjs",
+      "unit_test": "labs/crypt-projection/tests/g2_atlas_glb.mjs",
+      "qa_readme": "labs/crypt-projection/README_G2.md",
+      "capabilities_committed": [
+        "dynamic quad UV atlas",
+        "single-source depth-tested GPU atlas shader",
+        "target-only coverage classification",
+        "PNG atlas and mask export",
+        "GLB with embedded atlas",
+        "source provenance manifest"
+      ],
+      "verified": [
+        "ES module parsed and UV packing checks in V8",
+        "GLB header/JSON/accessor/image buffer view self-test in V8",
+        "G2 HTML inline JS syntax PASS",
+        "main and integration index.html exact same blob SHA"
+      ],
+      "unverified": [
+        "integrated GPU shader rendering",
+        "Android WebGL2 performance",
+        "real master render alignment",
+        "UV bleed/seams and orientation in visual viewer",
+        "independent import of real GPU-generated GLB"
+      ],
+      "noMasterUploaded": true
+    }
   }
 }
