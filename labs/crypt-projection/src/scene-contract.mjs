@@ -15,7 +15,7 @@ export function createProjectionManifest({
     geometry:{id:'v4.1-low-poly-lab',sourceCommit:geometryCommit,triangles:triangleCount,quads:quadCount,
       status:'draft',isApprovedGeometry:false},
     sources:[{id:'local-source-01',fileName:name,width:sourceWidth,height:sourceHeight,
-      storage:'local-only',kind:'generated-render',rights:'user-confirmation-required',
+      storage:'local-only',kind:'unclassified-reference',rights:'user-confirmation-required',
       sourceAndGeometryCorrespondence:'unverified'}],
     cameras:[{id:'camera-master-01',sourceId:'local-source-01',
       position:[camera.x,camera.y,camera.z],yawRad:camera.yaw,pitchRad:camera.pitch,
