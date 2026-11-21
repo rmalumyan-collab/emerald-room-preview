@@ -49,3 +49,11 @@ node labs/crypt-projection/tests/g2b_weighted_atlas.mjs
 node labs/crypt-projection/tests/scene_contract.mjs
 ```
 The CI workflow validates those five tasks without paid APIs. The GitHub Actions result is the source of truth for the latest commit.
+
+## Offline Android preview
+`labs/crypt-projection/G2B_PHONE_OFFLINE.html` is a **single HTML file** with the same G2b viewer and three local JS libraries inlined. It has no external imports, scripts or service calls.
+- On an Android phone, open the [GitHub file page](https://github.com/rmalumyan-collab/emerald-room-preview/blob/integration/unified-builder-v1/labs/crypt-projection/G2B_PHONE_OFFLINE.html), download the **Raw** HTML file, then open it in Chrome (your file manager may offer an Open With browser option).
+- No laptop, Python or third-party paid service is needed **if your browser allows local HTML/WebGL2**. If it does not, fall back to the same-Wi-Fi local HTTP server described above.
+- Actual Android WebGL2, image picker, GPU texture bake and GLB download **remain untested** in this environment.
+- The build is generated from G2b source by `node labs/crypt-projection/tools/build_portable.mjs`; CI runs `--check` to prevent a stale portable copy.
+- The reference image chosen in the browser stays local; the public repository contains **only code**.
