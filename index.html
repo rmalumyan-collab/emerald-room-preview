@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="hy"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Emerald Room · FAST Draft v4</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;height:100%;overflow:hidden;background:#101718;color:#f3eadb;font-family:system-ui,Arial,sans-serif;touch-action:none}
+canvas{display:block;width:100%;height:100%;touch-action:none}
+#hud{position:fixed;left:8px;right:8px;top:env(safe-area-inset-top,0px);padding-top:8px;display:flex;align-items:flex-start;justify-content:space-between;gap:8px;pointer-events:none}
+.panel{border:1px solid #6d725b99;border-radius:10px;background:#142022da;padding:8px 10px;max-width:300px;backdrop-filter:blur(5px);font-size:12px}
+.panel strong{display:block;color:#eac985;letter-spacing:.3px}
+#status{color:#c8d3be;font-size:11px;margin-top:4px}
+#buttons{position:fixed;top:74px;left:8px;right:8px;display:flex;flex-wrap:wrap;gap:5px;pointer-events:auto}
+button{background:#243533dc;border:1px solid #9da38988;border-radius:8px;color:#f2e6cf;padding:8px 11px;font-size:12px;font-weight:600;touch-action:manipulation}
+button:active,button.active{background:#7a8150;border-color:#e1d3a8}
+#guide{position:fixed;left:50%;transform:translateX(-50%);bottom:env(safe-area-inset-bottom,12px);font-size:11px;white-space:nowrap;background:#142022c9;border-radius:7px;padding:5px 9px;pointer-events:none}
+#joystick{position:fixed;left:16px;bottom:calc(32px + env(safe-area-inset-bottom,0px));width:115px;height:115px;border-radius:50%;border:2px solid #b7c8b366;background:#20332d7a;touch-action:none}
+#nub{position:absolute;left:36px;top:36px;width:39px;height:39px;border-radius:50%;background:#dfd5a1af;border:1px solid #fff7;pointer-events:none}
+#look{position:fixed;right:12px;bottom:calc(44px + env(safe-area-inset-bottom,0px));border:1px solid #fff5;border-radius:10px;background:#172a2399;padding:10px;font-size:12px;pointer-events:none}
+#error{display:none;position:fixed;inset:30% 12%;background:#172222;border:2px solid #cb9e67;border-radius:16px;padding:18px;line-height:1.5}
+#crosshair{position:fixed;left:50%;top:51%;width:9px;height:9px;transform:translate(-50%,-50%);border:1px solid #e9e0bfaa;border-radius:50%;pointer-events:none}
+@media(min-width:850px){#buttons{top:59px}#joystick{opacity:.55}#look{opacity:.6}}
+</style></head>
+<body><canvas id="view"></canvas>
+<div id="hud"><div class="panel"><strong>EMERALD ROOM · FAST DRAFT v4</strong><div id="status">WebGL2: ստուգվում է…</div></div><div class="panel"><strong>LOW POLY TEST</strong><span id="fps">FPS: —</span><div>Geometry ≠ final design</div></div></div>
+<div id="buttons"><button data-view="hero" class="active">01 · Hero</button><button data-view="left">D · Ձախ</button><button data-view="right">B · Աջ</button><button data-view="rear">C · Մուտք</button><button data-view="ceiling">Առաստաղ</button><button id="mapBtn">A–D քարտեզ</button></div>
+<div id="joystick"><div id="nub"></div></div><div id="look">↔ Քաշիր՝ նայելու համար</div><div id="guide">Ձախ՝ շարժվել · աջ՝ նայել · W A S D</div><div id="crosshair"></div><div id="error"></div>
+<script>
+(function(){
+'use strict';
+var canvas=document.getElementById('view'), status=document.getElementById('status'), fpsEl=document.getElementById('fps');
+var gl=canvas.getContext('webgl2',{antialias:false,powerPreference:'low-power',alpha:false,depth:true});
+if(!gl){document.getElementById('error').style.display='block';document.getElementById('error').textContent='Այս դիտարկիչում WebGL2 հասանելի չէ։ Բացիր Chrome-ում, կամ ստուգիր GPU արագացումը։';status.textContent='WebGL2: NO';return;}
+status.textContent='WebGL2: YES · Touch + collisions · Draft';
+var vs='#version 300 es\nprecision mediump float;in vec3 position;in vec3 normal;in vec3 color;uniform vec3 eye;uniform vec2 angles;uniform mat4 proj;out vec3 vColor;out float vFog;void main(){vec3 d=position-eye;float y=angles.x,p=angles.y;vec3 forward=vec3(sin(y)*cos(p),sin(p),-cos(y)*cos(p));vec3 right=vec3(cos(y),0.,sin(y));vec3 up=cross(right,forward);float dist=max(.1,dot(d,forward));vec3 v=vec3(dot(d,right),dot(d,up),-dot(d,forward));gl_Position=proj*vec4(v,1.);float light=.56+.44*max(0.,dot(normalize(normal),normalize(vec3(-.4,1.,.6))));vColor=color*light;vFog=clamp((dist-13.)/28.,0.,.82);}';
+var fs='#version 300 es\nprecision mediump float;in vec3 vColor;in float vFog;out vec4 outColor;void main(){vec3 c=mix(vColor,vec3(.105,.135,.13),vFog);outColor=vec4(c,1.);}';
+function compile(type,src){var s=gl.createShader(type);gl.shaderSource(s,src);gl.compileShader(s);if(!gl.getShaderParameter(s,gl.COMPILE_STATUS))throw Error(gl.getShaderInfoLog(s));return s;}
+var program=gl.createProgram();try{gl.attachShader(program,compile(gl.VERTEX_SHADER,vs));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,fs));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw Error(gl.getProgramInfoLog(program));}catch(e){status.textContent='Shader: FAIL '+e.message;return;}
+gl.useProgram(program);
+var vertices=[],normals=[],colors=[], triangles=0;
+function face(a,b,c,d,col,n){[a,b,c,a,c,d].forEach(function(p){vertices.push(p[0],p[1],p[2]);normals.push(n[0],n[1],n[2]);colors.push(col[0],col[1],col[2]);});triangles+=2;}
+function box(cx,cy,cz,w,h,d,col){var x=cx-w/2,X=cx+w/2,y=cy-h/2,Y=cy+h/2,z=cz-d/2,Z=cz+d/2;
+face([x,y,Z],[X,y,Z],[X,Y,Z],[x,Y,Z],col,[0,0,1]);face([X,y,z],[x,y,z],[x,Y,z],[X,Y,z],col,[0,0,-1]);
+face([x,y,z],[x,y,Z],[x,Y,Z],[x,Y,z],col,[-1,0,0]);face([X,y,Z],[X,y,z],[X,Y,z],[X,Y,Z],col,[1,0,0]);
+face([x,Y,Z],[X,Y,Z],[X,Y,z],[x,Y,z],col,[0,1,0]);face([x,y,z],[X,y,z],[X,y,Z],[x,y,Z],col,[0,-1,0]);}
+function ring(cx,cy,cz,rOuter,rInner,col){for(var i=0;i<24;i++){var a=i*Math.PI/12,b=(i+1)*Math.PI/12;face([cx+Math.cos(a)*rInner,cy,cz+Math.sin(a)*rInner],[cx+Math.cos(b)*rInner,cy,cz+Math.sin(b)*rInner],[cx+Math.cos(b)*rOuter,cy,cz+Math.sin(b)*rOuter],[cx+Math.cos(a)*rOuter,cy,cz+Math.sin(a)*rOuter],col,[0,1,0]);}}
+function pillar(x,z){box(x,2.55,z,.68,5.1,.68,[.53,.49,.39]);box(x,.33,z,1.05,.64,1.05,[.44,.41,.34]);box(x,4.88,z,.98,.42,.98,[.61,.57,.46]);}
+function vaultRib(z){for(var i=0;i<10;i++){var x=-5.05+i*1.12,y=5.12+1.35*(1-Math.pow(x/5.6,2));box(x,y,z,1.14,.18,.35,[.58,.55,.47]);}}
+function banner(x,z){box(x,3.75,z,.035,1.45,.68,[.13,.28,.24]);box(x,4.48,z,.07,.09,.76,[.57,.45,.18]);}
+box(0,-.18,0,11,.36,20.5,[.32,.34,.31]);box(-5.52,2.7,0,.35,5.4,20.5,[.42,.44,.39]);box(5.52,2.7,0,.35,5.4,20.5,[.43,.45,.4]);box(0,2.9,-10.15,11,5.8,.38,[.4,.43,.37]);
+box(-4.22,2.75,10.18,2.6,5.5,.38,[.42,.44,.39]);box(4.22,2.75,10.18,2.6,5.5,.38,[.42,.44,.39]);box(0,4.7,10.18,5.9,1.6,.38,[.47,.46,.38]);
+box(0,6.3,0,11,.3,20.5,[.4,.42,.37]);
+var cols=[-7.3,-3.5,.3,4.1,7.9];cols.forEach(function(z){pillar(-4.42,z);pillar(4.42,z);vaultRib(z);});
+for(var i=0;i<4;i++){var z=-5.95-i*.52;box(0,.12+i*.2,z,6.65,.24,0.52,[.48,.45,.38]);}
+box(0,.92,-8.8,6.9,.2,2.9,[.44,.41,.34]);box(0,1.55,-9.2,2.7,1.2,.95,[.56,.49,.32]);box(0,2.35,-9.2,2.9,.24,1.05,[.76,.61,.30]);
+box(0,3.35,-9.95,3.2,2.8,.1,[.21,.32,.29]);box(0,3.35,-9.87,.95,1.15,.08,[.75,.63,.28]);
+ring(0,.012,1.2,1.95,1.7,[.67,.56,.27]);ring(0,.015,1.2,.9,.7,[.65,.52,.24]);
+[-4.42,4.42].forEach(function(x){[-7.3,-3.5,.3,4.1].forEach(function(z){box(x>0?x-.54:x+.54,3.85,z,.16,.23,.25,[.34,.88,.55]);});});
+banner(-5.28,-1.7);banner(5.28,-1.7);
+var posBuffer=gl.createBuffer(),normBuffer=gl.createBuffer(),colBuffer=gl.createBuffer();
+function attr(name,data,buffer){gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array(data),gl.STATIC_DRAW);var loc=gl.getAttribLocation(program,name);gl.enableVertexAttribArray(loc);gl.vertexAttribPointer(loc,3,gl.FLOAT,false,0,0);}
+attr('position',vertices,posBuffer);attr('normal',normals,normBuffer);attr('color',colors,colBuffer);
+var eyeLoc=gl.getUniformLocation(program,'eye'),angleLoc=gl.getUniformLocation(program,'angles'),projLoc=gl.getUniformLocation(program,'proj');
+gl.enable(gl.DEPTH_TEST);gl.clearColor(.105,.135,.13,1);
+var cam={x:-.5,y:1.7,z:8.8,yaw:0,pitch:.03};
+var views={hero:[-.5,8.8,0,.03],left:[-2.6,.5,Math.PI/2,.01],right:[2.6,.5,-Math.PI/2,.01],rear:[.3,-6.0,Math.PI,.02],ceiling:[0,2.2,0,.95]};
+function hAt(z){if(z<-7.6)return .8;if(z<-7.08)return .64;if(z<-6.56)return .44;if(z<-6.04)return .24;return 0;}
+function setView(name){var v=views[name];cam.x=v[0];cam.z=v[1];cam.yaw=v[2];cam.pitch=v[3];cam.y=1.7+hAt(cam.z);document.querySelectorAll('[data-view]').forEach(function(b){b.classList.toggle('active',b.dataset.view===name)});}
+document.querySelectorAll('[data-view]').forEach(function(btn){btn.addEventListener('click',function(){setView(btn.dataset.view);});});
+document.getElementById('mapBtn').addEventListener('click',function(){alert('A — խորան / դիմացի պատ\\nB — աջ պատ\\nC — մուտք / հետևի պատ\\nD — ձախ պատ\\n\\nՉափերը փորձնական են՝ ոչ հաստատված։');});
+var keys={},joy={x:0,y:0},joyId=null,lookId=null,lastX=0,lastY=0;
+window.addEventListener('keydown',function(e){keys[e.key.toLowerCase()]=true;if('wasdarrowup arrowdown arrowleft arrowright'.includes(e.key.toLowerCase()))e.preventDefault();});
+window.addEventListener('keyup',function(e){keys[e.key.toLowerCase()]=false;});
+var joyEl=document.getElementById('joystick'),nub=document.getElementById('nub');
+function moveJoy(e){var r=joyEl.getBoundingClientRect(),cx=r.left+r.width/2,cy=r.top+r.height/2;var dx=(e.clientX-cx)/43,dy=(e.clientY-cy)/43,l=Math.max(1,Math.hypot(dx,dy));joy.x=dx/l;joy.y=dy/l;nub.style.transform='translate('+(joy.x*39)+'px,'+(joy.y*39)+'px)';}
+joyEl.addEventListener('pointerdown',function(e){joyId=e.pointerId;joyEl.setPointerCapture(e.pointerId);moveJoy(e);});
+joyEl.addEventListener('pointermove',function(e){if(e.pointerId===joyId)moveJoy(e);});
+function resetJoy(e){if(e.pointerId!==joyId)return;joyId=null;joy.x=joy.y=0;nub.style.transform='';}
+joyEl.addEventListener('pointerup',resetJoy);joyEl.addEventListener('pointercancel',resetJoy);
+canvas.addEventListener('pointerdown',function(e){if(lookId===null){lookId=e.pointerId;lastX=e.clientX;lastY=e.clientY;canvas.setPointerCapture(e.pointerId);}});
+canvas.addEventListener('pointermove',function(e){if(e.pointerId!==lookId)return;cam.yaw+=(e.clientX-lastX)*.004;cam.pitch=Math.max(-1.05,Math.min(1.12,cam.pitch-(e.clientY-lastY)*.004));lastX=e.clientX;lastY=e.clientY;});
+canvas.addEventListener('pointerup',function(e){if(e.pointerId===lookId)lookId=null;});canvas.addEventListener('pointercancel',function(e){if(e.pointerId===lookId)lookId=null;});
+function slide(nx,nz){nx=Math.max(-4.96,Math.min(4.96,nx));nz=Math.max(-8.68,Math.min(9.0,nz));
+cols.forEach(function(z){[-4.42,4.42].forEach(function(x){var dx=nx-x,dz=nz-z,d=Math.hypot(dx,dz),min=.73;if(d<min){nx=x+dx/Math.max(.001,d)*min;nz=z+dz/Math.max(.001,d)*min;}});});
+if(nz<-8.0&&Math.abs(nx)<1.65)nz=-8.0;
+cam.x=nx;cam.z=nz;cam.y=1.7+hAt(nz);}
+var last=performance.now(),acc=0,nframes=0;
+function tick(now){var dt=Math.min(.05,(now-last)/1000);last=now;var f=(keys['w']||keys['arrowup']?1:0)-(keys['s']||keys['arrowdown']?1:0)-joy.y;
+var r=(keys['d']||keys['arrowright']?1:0)-(keys['a']||keys['arrowleft']?1:0)+joy.x;
+var l=Math.max(1,Math.hypot(f,r));f/=l;r/=l;
+if(f||r){var speed=3.25*dt;slide(cam.x+speed*(f*Math.sin(cam.yaw)+r*Math.cos(cam.y)),cam.z+speed*(-f*Math.cos(cam.yaw)+r*Math.sin(cam.y)));}
+var w=canvas.clientWidth,h=canvas.clientHeight,dpr=Math.min(window.devicePixelRatio||1,1.5),rw=Math.round(w*dpr),rh=Math.round(h*dpr);
+if(canvas.width!==rw||canvas.height!==rh){canvas.width=rw;canvas.height=rh;gl.viewport(0,0,rw,rh);}
+var aspect=rw/Math.max(1,rh),fv=1/Math.tan(68*Math.PI/360),near=.06,far=55;
+var p=new Float32Array([fv/aspect,0,0,0,0,fv,0,0,0,0,(far+near)/(near-far),-1,0,0,2*far*near/(near-far),0]);
+gl.uniformMatrix4fv(projLoc,false,p);gl.uniform3f(eyeLoc,cam.x,cam.y,cam.z);gl.uniform2f(angleLoc,cam.yaw,cam.pitch);
+gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.drawArrays(gl.TRIANGLES,0,vertices.length/3);
+acc+=dt;nframes++;if(acc>1){fpsEl.textContent='FPS: '+Math.round(nframes/acc)+' · '+triangles+' triangles';acc=0;nframes=0;}
+requestAnimationFrame(tick);}
+requestAnimationFrame(tick);
+})();
+</script></body></html>
