@@ -1,0 +1,35 @@
+name: Crypt Projection regression checks
+on:
+  push:
+    branches:
+      - integration/unified-builder-v1
+    paths:
+      - 'labs/crypt-projection/**'
+      - 'index.html'
+      - '.github/workflows/crypt-projection-checks.yml'
+  pull_request:
+    paths:
+      - 'labs/crypt-projection/**'
+      - 'index.html'
+      - '.github/workflows/crypt-projection-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  node-geometry-uv-glb:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Node version
+        run: node --version
+      - name: Synthetic camera math regression
+        run: node labs/crypt-projection/tests/qa_math.mjs
+      - name: G1 static viewer regression
+        run: node labs/crypt-projection/tests/g1_static.mjs
+      - name: Legacy G2 UV/GLB regression
+        run: node labs/crypt-projection/tests/g2_atlas_glb.mjs
+      - name: Weighted UV, gutter, material-mode regression
+        run: node labs/crypt-projection/tests/g2b_weighted_atlas.mjs
