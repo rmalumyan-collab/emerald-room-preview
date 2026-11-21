@@ -1,0 +1,85 @@
+{
+  "schema_version": 1,
+  "project": "Emerald World Builder",
+  "coordination": {
+    "primary_repo": "rmalumyan-collab/emerald-room-preview",
+    "source_of_truth": "GitHub branches + PRs + project-state.json + PROJECT_CONTROL.md",
+    "main_is_stable": true,
+    "branch_integration": "integration/unified-builder-v1",
+    "active_issue": 1,
+    "public_repository": true,
+    "no_paid_services_without_approval": true,
+    "privacy_rule": "Do not commit proprietary master renders to public repo"
+  },
+  "last_reconciled_date": "2026-11-21",
+  "main": {
+    "sha_at_sync": "8a1bd7f01b6acb619df3ec68e390fbfa65ec2899",
+    "version": "FAST Draft v4.1",
+    "features": [
+      "WebGL2 low-poly blockout",
+      "12-segment vault",
+      "touch control",
+      "basic collisions",
+      "FPS counter"
+    ],
+    "verified": [
+      "GitHub commit exists"
+    ],
+    "unverified": [
+      "v4.1 actual Android FPS",
+      "v4.1 nav regression after vault change"
+    ]
+  },
+  "local_prototype": {
+    "name": "Crypt Room Projection Test 02",
+    "in_main": false,
+    "known_static_tested": [
+      "584-triangle 8x12 m demo mesh",
+      "synthetic landmarks reprojection math",
+      "GLB import structure",
+      "camera JSON protocol",
+      "0/15/30 QA math"
+    ],
+    "not_yet_verified": [
+      "actual master render fit",
+      "multi-source seam correction",
+      "Android WebGL2 projection FPS",
+      "GPU UV bake quality"
+    ]
+  },
+  "tracks": {
+    "game": {
+      "owner": "other chat / GitHub",
+      "status": "in_progress",
+      "next": "Confirm v4.1 browser screenshot and measured mobile FPS"
+    },
+    "projection": {
+      "owner": "this integration chat / lab",
+      "status": "in_progress",
+      "next": "Port camera and QA math, real-source one wall and pilaster calibration"
+    }
+  },
+  "gates": [
+    {
+      "id": "G0",
+      "name": "baseline",
+      "status": "partial"
+    },
+    {
+      "id": "G1",
+      "name": "camera matching on actual master",
+      "status": "not_started"
+    },
+    {
+      "id": "G2",
+      "name": "projection multi-view coverage",
+      "status": "not_started"
+    },
+    {
+      "id": "G3",
+      "name": "UV GLB mobile QA",
+      "status": "not_started"
+    }
+  ],
+  "evidence_rule": "Do not describe synthetic math tests as photorealistic alignment or phone runtime verification"
+}
