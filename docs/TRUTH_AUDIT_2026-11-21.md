@@ -66,6 +66,16 @@
 | New G2 Shader on actual GPU / 0°/15°/30° / Android | NOT RUN, no WebGL2 in assistant environment |
 | Real approved master image compared with geometry | NOT RUN, source not established in current worktree |
 
+## Reference asset recovery discovered during this audit
+
+The user's existing Library **does contain six candidate crypt texture images**:
+`crypt-v2-panel-01.png` through `crypt-v2-panel-06.png`.
+- Visual inspection of panels 01, 02, 04 and 05 shows photoreal weathered stone, vaulted ceiling, niches, pilasters, altar/stair or doorway from different directions.
+- These are useful **candidate source references** for a controlled one-wall test; no user re-upload should be presumed necessary until access to the selected assets is established in the running pipeline.
+- They are **not** yet proven to be synchronized views of one exact 3D geometry, and not necessarily the immutable approved master image. Do not claim camera matching or scale based on appearance.
+- Crucial observed mismatch: v4.1 is a stylized low-poly room with banners/rings/approximate pillars; panel images have articulated arched niches and detailed stone ribs. Camera projection cannot repair geometric/semantic differences. Lock an approved **matching geometry revision** before projecting these assets.
+- Because GitHub repository is public, **do not commit candidate image bytes** without rights and explicit authorization. Use them locally for calibration/QA.
+
 ## Corrective sequence — STOP ADDING NEW FEATURES FOR A MOMENT
 
 **Gate A / one actual source**
