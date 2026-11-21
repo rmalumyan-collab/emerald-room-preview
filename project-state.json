@@ -55,8 +55,8 @@
     },
     "projection": {
       "owner": "this integration chat / lab",
-      "status": "G2a_uv_glb_code_committed_not_gpu_verified",
-      "next": "On actual Android GPU: load local master render, calibrate camera, bake atlas, download GLB, independently open and compare 0/15/30; record FPS and artifacts."
+      "status": "G2b_weightedUV_materialAndManifest_committed_CI_checked_GPU_pending",
+      "next": "With approved local image, lock matching wall/pilaster geometry, measure real landmark fit, perform G2b GPU bake, inspect weighted UV/GLB and Android FPS. No merge before proof."
     }
   },
   "gates": [
@@ -74,14 +74,14 @@
     {
       "id": "G2",
       "name": "projection multi-view coverage",
-      "status": "partial_single_source_only",
-      "note": "G2a single-source source-or-fallback atlas code committed; multi-view blending/seam fixing not implemented."
+      "status": "partial_single_source_with_weighted_atlas",
+      "note": "One-source weighted atlas, 2px gutters, fallback confidence mask code. NO second camera, seam blend or real source validation."
     },
     {
       "id": "G3",
       "name": "UV GLB mobile QA",
-      "status": "partial_code_only",
-      "note": "Atlas PNG + mask PNG + embedded PNG GLB exporter code and deterministic GLB structure checks exist; actual GPU bake/reimport not verified."
+      "status": "partial_code_CI_pass_gpu_not_run",
+      "note": "Unlit/PBR GLB modes, scene manifest and automated Node tests are integrated. Real GPU atlas and Android performance remain NOT RUN."
     }
   ],
   "evidence_rule": "Do not describe synthetic math tests as photorealistic alignment or phone runtime verification",
@@ -137,6 +137,52 @@
         "independent import of real GPU-generated GLB"
       ],
       "noMasterUploaded": true
+    },
+    "g2b": {
+      "viewer": "labs/crypt-projection/v41-uv-glb-preview.html",
+      "atlas": "labs/crypt-projection/src/weighted-atlas.mjs",
+      "materialExporter": "labs/crypt-projection/src/atlas-export.mjs",
+      "manifest": "labs/crypt-projection/src/scene-contract.mjs",
+      "tests": [
+        "labs/crypt-projection/tests/qa_math.mjs",
+        "labs/crypt-projection/tests/g1_static.mjs",
+        "labs/crypt-projection/tests/g2_atlas_glb.mjs",
+        "labs/crypt-projection/tests/g2b_weighted_atlas.mjs",
+        "labs/crypt-projection/tests/scene_contract.mjs"
+      ],
+      "workflow": ".github/workflows/crypt-projection-checks.yml",
+      "documentation": "labs/crypt-projection/README_G2B.md",
+      "measuredStructural": {
+        "v41Triangles": 936,
+        "quadFaces": 468,
+        "oldUniformAtlasCellPx1024": 46.55,
+        "oldUniformUsablePx1024": 40.96,
+        "largestWeightedCellPx1024": [
+          403,
+          218
+        ],
+        "largestWeightedUsablePx1024": [
+          399,
+          214
+        ],
+        "overlapFaces": 0,
+        "outOfBoundsFaces": 0
+      },
+      "verified": [
+        "GitHub workflow automated Node tests PASS on commit 161f233c002d94acffbbc54468b5f3fd1d643dee",
+        "all 5 automated Node checks passed",
+        "main/index.html not modified by any integration commits"
+      ],
+      "notVerified": [
+        "G2b GPU shader compilation on actual mobile device",
+        "real master reference geometry fit / RMS",
+        "atlas image appearance and seam quality",
+        "lighting-neutral albedo extraction",
+        "time to playable and mobile FPS",
+        "multi-view quality / seam correction"
+      ],
+      "privacy": "user source pictures read only from local browser; never committed",
+      "mergeAllowed": false
     }
   },
   "audit": {
