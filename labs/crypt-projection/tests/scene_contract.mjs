@@ -15,7 +15,7 @@ assert.equal(manifest.sources[0].storage,'local-only');
 assert.equal(manifest.geometry.isApprovedGeometry,false);
 assert.equal(manifest.acceptance.status,'prototype-unverified');
 assert.equal(manifest.bakes[0].coverage.sourceProjectedRatio,.7);
-assert.equal(manifest.bakes[0].coverage.fallbackRatio,.3);
+assert.ok(Math.abs(manifest.bakes[0].coverage.fallbackRatio-.3)<1e-12);
 const clone=()=>structuredClone(manifest);
 {
  const broken=clone();broken.sources[0].storage='github-public';
