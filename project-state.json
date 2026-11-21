@@ -55,8 +55,8 @@
     },
     "projection": {
       "owner": "this integration chat / lab",
-      "status": "G2b_weightedUV_materialAndManifest_committed_CI_checked_GPU_pending",
-      "next": "With approved local image, lock matching wall/pilaster geometry, measure real landmark fit, perform G2b GPU bake, inspect weighted UV/GLB and Android FPS. No merge before proof."
+      "status": "G2b_corrective_base_and_portable_approved_code_CI_pass_gpu_pending",
+      "next": "Use offline single HTML on Android and selected candidate local crypt-v2 render. Verify WebGL2 scene, camera overlay, atlas bake, GLB import and median FPS; if geometry does not match, lock source-compatible one wall/pilaster revision first."
     }
   },
   "gates": [
@@ -81,7 +81,7 @@
       "id": "G3",
       "name": "UV GLB mobile QA",
       "status": "partial_code_CI_pass_gpu_not_run",
-      "note": "Unlit/PBR GLB modes, scene manifest and automated Node tests are integrated. Real GPU atlas and Android performance remain NOT RUN."
+      "note": "Weighted UV atlas, 2px dilated gutters, explicit unlit/PBR, validated provenance, offline HTML and CI PASS. Still no real mobile GPU, reference alignment or verified exported GLB."
     }
   ],
   "evidence_rule": "Do not describe synthetic math tests as photorealistic alignment or phone runtime verification",
@@ -182,7 +182,24 @@
         "multi-view quality / seam correction"
       ],
       "privacy": "user source pictures read only from local browser; never committed",
-      "mergeAllowed": false
+      "mergeAllowed": false,
+      "portable": {
+        "path": "labs/crypt-projection/G2B_PHONE_OFFLINE.html",
+        "generator": "labs/crypt-projection/tools/build_portable.mjs",
+        "status": "committed_CI_portability_sync_pass_actual_phone_not_tested",
+        "fileBytes": 49934,
+        "platform": "Android local-file HTML + WebGL2 subject to browser policy",
+        "dependencies": "all 3 local modules inlined; no external services",
+        "verified": [
+          "inline JavaScript parses",
+          "no module imports/fetch calls",
+          "GitHub Actions portable generator --check PASS commit 7b7c8390306ede53e68d6fe8053302407c0ce64a"
+        ],
+        "notVerified": [
+          "actual Android local file execution",
+          "WebGL2 GPU baking and GLB download"
+        ]
+      }
     }
   },
   "audit": {
