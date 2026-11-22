@@ -23,6 +23,8 @@ jobs:
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
+      - name: Check trusted policy with offline unit tests
+        run: python3 -m unittest discover -s .github/tests -p 'test_atrium_autopilot.py' -v
       - name: Inspect PR changed files, modes and SHA
         env:
           GH_TOKEN: ${{ github.token }}
