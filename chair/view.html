@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="hy">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#e7e1db"/>
+<title>ATRIUM | Walnut Chair — Interactive 3D</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;background:#e7e1db;font-family:system-ui,Arial,sans-serif;overflow:hidden}
+#viewer{position:absolute;inset:0;touch-action:none;cursor:grab}#viewer:active{cursor:grabbing}canvas{display:block;width:100%;height:100%}
+#top{position:absolute;top:0;left:0;right:0;pointer-events:none;padding:calc(15px + env(safe-area-inset-top)) 17px 10px;color:#372c27}
+.name{font-size:14px;letter-spacing:.14em;font-weight:750}.sub{font-size:12px;margin-top:5px;opacity:.69}
+#tools{position:absolute;bottom:calc(19px + env(safe-area-inset-bottom));left:12px;right:12px;display:flex;justify-content:center;gap:9px;flex-wrap:wrap}
+button{background:#fffdf9e9;border:1px solid #c6bbb4;color:#44362f;padding:13px 17px;border-radius:50px;font-size:14px;font-weight:650;box-shadow:0 3px 18px #59463a1c;cursor:pointer}
+#status{position:absolute;top:47%;left:15%;right:15%;text-align:center;font-size:13px;color:#6a5e54}
+#hint{position:absolute;left:0;right:0;bottom:calc(90px + env(safe-area-inset-bottom));font-size:12px;text-align:center;color:#6e635c;pointer-events:none}
+</style>
+</head>
+<body>
+<div id="viewer"></div>
+<div id="top"><div class="name">ATRIUM / 3D CHAIR</div><div class="sub">Walnut wood · Charcoal steel</div></div>
+<div id="status">Բացվում է 3D տեսքը…</div>
+<div id="hint">Մատով պտտիր · երկու մատով մոտեցրու</div>
+<div id="tools"><button id="reset">↺ Սկզբնական տեսք</button><button id="front">Առջևից</button><button id="side">Կողքից</button><button id="back">Հետևից</button></div>
+<script type="module">
+import * as THREE from "https://esm.sh/three@0.160.1";
+const holder=document.querySelector('#viewer');
+const status=document.querySelector('#status');
+try {
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:"high-performance"});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+renderer.setSize(window.innerWidth,window.innerHeight);
+renderer.setClearColor(0xe7e1db,1);
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+renderer.toneMapping=THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure=1.75;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+holder.appendChild(renderer.domElement);
+const scene=new THREE.Scene();scene.background=new THREE.Color(0xe7e1db);
+const cam=new THREE.PerspectiveCamera(37,innerWidth/innerHeight,.03,80);
+cam.up.set(0,0,1);
+const matMetal=new THREE.MeshStandardMaterial({color:0x252529,metalness:.65,roughness:.33});
+const matBolts=new THREE.MeshStandardMaterial({color:0x3a3b3d,metalness:.8,roughness:.3});
+const matFeet=new THREE.MeshStandardMaterial({color:0x141315,roughness:.89});
+function woodTexture(seed){
+const c=document.createElement('canvas');c.width=512;c.height=512;const ctx=c.getContext('2d');ctx.fillStyle=seed===1?'#9a572e':'#884625';ctx.fillRect(0,0,512,512);
+let n=seed*977+19;const rand=()=>{n=(1664525*n+1013904223)>>>0;return n/4294967296};
+for(let i=0;i<190;i++){
+const b=i*3.1-30;
+ctx.strokeStyle=rand()>.43?'rgba(34,14,6,.15)':'rgba(241,175,103,.12)';
+ctx.lineWidth=.25+rand()*2.5;ctx.beginPath();
+for(let x=0;x<=512;x+=9){const y=b+6*Math.sin(x*.008+i*.27)+3*Math.sin(x*.027+i*.15)+11*Math.exp(-Math.pow((x-320)/90,2))*Math.sin(i*.19);if(x===0)ctx.moveTo(x,y);else ctx.lineTo(x,y)}
+ctx.stroke()
+}
+let t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t
+}
+const seatMat=new THREE.MeshStandardMaterial({map:woodTexture(1),color:0xc99b75,metalness:0,roughness:.35,side:THREE.DoubleSide});
+const backMat=new THREE.MeshStandardMaterial({map:woodTexture(2),color:0xd1a079,metalness:0,roughness:.37,side:THREE.DoubleSide});
+const group=new THREE.Group();scene.add(group);
+const add=(geom,material)=>{const mesh=new THREE.Mesh(geom,material);mesh.castShadow=true;mesh.receiveShadow=true;group.add(mesh);return mesh};
+function shapeRounded(x0,y0,x1,y1,r){
+let s=new THREE.Shape();
+s.moveTo(x0+r,y0);s.lineTo(x1-r,y0);s.quadraticCurveTo(x1,y0,x1,y0+r);
+s.lineTo(x1,y1-r);s.quadraticCurveTo(x1,y1,x1-r,y1);
+s.lineTo(x0+r,y1);s.quadraticCurveTo(x0,y1,x0,y1-r);
+s.lineTo(x0,y0+r);s.quadraticCurveTo(x0,y0,x0+r,y0);return s
+}
+const seatGeo=new THREE.ExtrudeGeometry(shapeRounded(-.248,-.25,.248,.22,.067),{depth:.014,steps:1,bevelEnabled:true,bevelSegments:3,bevelSize:.002,bevelThickness:.002,curveSegments:18});
+const sp=seatGeo.attributes.position;
+for(let i=0;i<sp.count;i++){
+const x=sp.getX(i),y=sp.getY(i),z=sp.getZ(i);
+const bowl=Math.exp(-((x/.225)**2*1.9+((y+.025)/.22)**2*1.65));
+sp.setZ(i,z+.445-.020*bowl+.007*Math.pow(Math.abs(x)/.248,4)+.005*Math.pow(Math.abs(y+.01)/.245,4))
+}seatGeo.computeVertexNormals();add(seatGeo,seatMat);
+const backGeo=new THREE.ExtrudeGeometry(shapeRounded(-.248,.625,.248,.895,.063),{depth:.014,steps:1,bevelEnabled:true,bevelSize:.002,bevelThickness:.002,bevelSegments:3,curveSegments:18});
+const bp=backGeo.attributes.position;
+for(let i=0;i<bp.count;i++){
+const x=bp.getX(i),z=bp.getY(i),thick=bp.getZ(i);
+const y=.253+.18*(z-.745)+.022*Math.pow(x/.248,2)-.01*Math.exp(-((x/.18)**2+((z-.713)/.10)**2))+thick;
+bp.setXYZ(i,x,y,z)
+}backGeo.computeVertexNormals();add(backGeo,backMat);
+function tube(points,r,material=matMetal,segs=48){
+let curve=new THREE.CatmullRomCurve3(points.map(p=>new THREE.Vector3(...p)),false,'catmullrom',.18);
+return add(new THREE.TubeGeometry(curve,segs,r,12,false),material)
+}
+for(const s of [-1,1]){
+tube([[s*.250,-.308,.015],[s*.243,-.290,.118],[s*.226,-.240,.335],[s*.223,-.189,.443]],.012);
+tube([[s*.262,.342,.015],[s*.251,.305,.225],[s*.230,.237,.424],[s*.223,.263,.527],[s*.223,.289,.670],[s*.226,.313,.849]],.0125,matMetal,70);
+tube([[s*.211,-.204,.438],[s*.215,.018,.438],[s*.227,.235,.437]],.011);
+tube([[s*.25,-.311,.006],[s*.25,-.311,.029]],.0138,matFeet,12);
+tube([[s*.262,.343,.006],[s*.262,.343,.029]],.0138,matFeet,12);
+tube([[s*.223,.268,.57],[s*.219,.284,.726]],.008);
+for(const z of [.706,.807]){
+let x=s*.185,y=.253+.180*(z-.745)+.022*Math.pow(x/.248,2)-.01*Math.exp(-((x/.18)**2+((z-.713)/.10)**2))-.004;
+let bolt=add(new THREE.CylinderGeometry(.0069,.0069,.004,24),matBolts);
+bolt.rotation.x=Math.PI/2;bolt.position.set(x,y-.004,z)
+}
+}
+for(const y of [-.168,.176])tube([[-.215,y,.427],[.215,y,.427]],.009);
+const plane=new THREE.Mesh(new THREE.PlaneGeometry(200,200),new THREE.MeshStandardMaterial({color:0xe7e1db,roughness:.95}));
+plane.position.z=-.001;plane.receiveShadow=true;scene.add(plane);
+const hemi=new THREE.HemisphereLight(0xffffff,0x89827f,2.5);hemi.position.set(0,0,5);scene.add(hemi);
+const key=new THREE.DirectionalLight(0xfff3e4,3.0);key.position.set(-1.7,-2.5,4);key.castShadow=true;key.shadow.mapSize.set(2048,2048);key.shadow.camera.left=-2;key.shadow.camera.right=2;key.shadow.camera.top=2;key.shadow.camera.bottom=-2;key.shadow.normalBias=.03;key.shadow.bias=-.00007;scene.add(key);
+const fill=new THREE.DirectionalLight(0xffffff,1.1);fill.position.set(2,1,3);scene.add(fill);
+let az=-.94,el=.4,distance=1.82;const target=new THREE.Vector3(0,0,.48);
+function cameraUpdate(){
+const d=Math.cos(el)*distance;
+cam.position.set(target.x+d*Math.cos(az),target.y+d*Math.sin(az),target.z+distance*Math.sin(el));
+cam.lookAt(target)
+}
+cameraUpdate();
+const pointers=new Map();let pinch=null;
+renderer.domElement.addEventListener('pointerdown',e=>{renderer.domElement.setPointerCapture(e.pointerId);pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});pinch=null});
+renderer.domElement.addEventListener('pointermove',e=>{
+if(!pointers.has(e.pointerId))return;
+let old=pointers.get(e.pointerId);let dx=e.clientX-old.x,dy=e.clientY-old.y;pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+if(pointers.size===1){az-=dx*.009;el=Math.max(-.19,Math.min(1.28,el+dy*.007));cameraUpdate()}
+else if(pointers.size===2){const [a,b]=[...pointers.values()];let p=Math.hypot(a.x-b.x,a.y-b.y);if(pinch)distance=Math.max(.75,Math.min(3.5,distance*pinch/p));pinch=p;cameraUpdate()}
+});
+const end=e=>{pointers.delete(e.pointerId);pinch=null};
+renderer.domElement.addEventListener('pointerup',end);renderer.domElement.addEventListener('pointercancel',end);
+renderer.domElement.addEventListener('wheel',e=>{e.preventDefault();distance=Math.max(.75,Math.min(3.5,distance*(e.deltaY>0?1.08:.92)));cameraUpdate()},{passive:false});
+function choose(a,e,r=1.82){az=a;el=e;distance=r;cameraUpdate()}
+document.querySelector('#reset').onclick=()=>choose(-.94,.4);
+document.querySelector('#front').onclick=()=>choose(-Math.PI/2,.12,1.7);
+document.querySelector('#side').onclick=()=>choose(0,.14,1.7);
+document.querySelector('#back').onclick=()=>choose(Math.PI/2,.15,1.8);
+window.addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+status.style.display='none';
+function draw(){requestAnimationFrame(draw);renderer.render(scene,cam)}draw()
+}catch(err){status.textContent='3D դիտիչը չբացվեց։ Ստուգիր ինտերնետը կամ փորձիր Chrome-ով։';console.error(err)}
+</script>
+</body></html>
