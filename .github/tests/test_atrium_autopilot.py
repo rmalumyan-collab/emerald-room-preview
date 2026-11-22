@@ -131,5 +131,20 @@ class WorkflowRunSafety(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             policy.verify_event_run(BadRun(), run, p)
 
+
+class PolicyReadinessTests(unittest.TestCase):
+    def test_only_mergeability_pending_is_policy_eligible(self):
+        self.assertEqual(policy.policy_errors(["GitHub mergeability gate not ready"]), [])
+    def test_real_policy_denial_is_preserved(self):
+        self.assertEqual(policy.policy_errors(["Disallowed path tools/runner.py", "GitHub mergeability gate not ready"]),
+                         ["Disallowed path tools/runner.py"])
+    def test_draft_still_denied_despite_pending_mergeability(self):
+        self.assertEqual(policy.policy_errors(["PR must be open and not Draft", "GitHub mergeability gate not ready"]),
+                         ["PR must be open and not Draft"])
+    def test_merge_gate_remains_strict_when_not_ready(self):
+        p = pr(); p["mergeable_state"] = "unknown"
+        reasons = policy.check(p, [file()], {file()["filename"]: "100644"})
+        self.assertIn("GitHub mergeability gate not ready", reasons)
+
 if __name__ == "__main__":
     unittest.main()
