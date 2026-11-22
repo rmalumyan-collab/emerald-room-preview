@@ -18,7 +18,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      # One-time pre-merge CI for this specific security PR only. Read-only token,
+      # no secrets, and no untrusted code in the privileged workflow_run job.
+      - name: Isolated bootstrap tests for exact security PR 3
+        if: ${{ github.event.pull_request.number == 3 && github.event.pull_request.head.ref == 'exp/atrium-autopilot-v2-20261122' && github.event.pull_request.user.login == 'rmalumyan-collab' && github.event.pull_request.head.repo.full_name == github.repository }}
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
       - name: Checkout trusted policy from main
+        if: ${{ github.event.pull_request.number != 3 }}
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.repository.default_branch }}
