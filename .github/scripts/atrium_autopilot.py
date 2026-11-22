@@ -4,6 +4,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -72,6 +73,12 @@ def check(pr, files, modes):
         if modes.get(path) != "100644":
             errors.append("Symlink, submodule or unknown file mode " + path)
     return errors
+
+def policy_errors(reasons):
+    """Policy may be eligible even while GitHub is still computing mergeability.
+    The privileged merge gate never ignores this readiness condition.
+    """
+    return [reason for reason in reasons if reason != "GitHub mergeability gate not ready"]
 
 def get_files(api, number):
     all_files = []
@@ -183,6 +190,7 @@ def main():
     if args.mode == "inspect":
         pr = event["pull_request"]
         _, reasons = verify(api, pr["number"], pr["head"]["sha"])
+        reasons = policy_errors(reasons)  # Read-only provisional policy classification.
         report(["## ATRIUM docs eligibility",
                 "- PR #%s: %s" % (pr["number"], "INELIGIBLE" if reasons else "ELIGIBLE"),
                 "- " + ("; ".join(reasons) if reasons else "Strict policy passed"),
@@ -203,7 +211,14 @@ def main():
         number = prs[0]["number"]
         current = api.call("GET", "/pulls/%s" % number)
         head_sha, tested_sha = verify_event_run(api, run, current)
-        pr, reasons = verify(api, number, head_sha)
+        # GitHub often calculates mergeable_state only after the first PR workflow
+        # starts. Retry briefly, but never waive the mergeability condition.
+        for attempt in range(6):
+            pr, reasons = verify(api, number, head_sha)
+            if reasons != ["GitHub mergeability gate not ready"]:
+                break
+            if attempt < 5:
+                time.sleep(3)
         if reasons:
             report(["Blocked PR #%s: %s" % (number, "; ".join(reasons))]); return 0
         verify_statuses(api, tested_sha)
