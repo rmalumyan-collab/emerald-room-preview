@@ -143,8 +143,15 @@ def main():
     if (run.get("head_repository") or {}).get("full_name") != repo:
         report(["Skipped: workflow run not from this repository"]); return 0
     prs = run.get("pull_requests") or []
+    if not prs and run.get("head_sha"):
+        # Some workflow_run payloads omit PR associations. Resolve only by exact SHA,
+        # fail closed on zero or multiple linked pull requests.
+        linked = api.call("GET", "/commits/%s/pulls?per_page=10" % run["head_sha"])
+        prs = [x for x in linked
+               if (x.get("head") or {}).get("sha") == run["head_sha"]
+               and (x.get("base") or {}).get("ref") == "main"]
     if len(prs) != 1:
-        report(["Skipped: workflow run did not identify exactly one PR"]); return 0
+        report(["Skipped: workflow run did not identify exactly one matching PR"]); return 0
 
     number, sha = prs[0]["number"], run.get("head_sha")
     try:
