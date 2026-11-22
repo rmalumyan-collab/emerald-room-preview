@@ -65,6 +65,15 @@ class SafeDocsPolicy(unittest.TestCase):
     def test_blocked_merge_state_denied(self):
         p = pr(); p["mergeable_state"] = "blocked"
         self.assertTrue(self.verdict(p=p))
+    def test_pending_ci_mergeability_does_not_deadlock(self):
+        p = pr(); p["mergeable_state"] = "unstable"
+        self.assertEqual(self.verdict(p=p), [])
+    def test_unmergeable_conflicts_denied(self):
+        p = pr(); p["mergeable"] = False
+        self.assertTrue(self.verdict(p=p))
+    def test_behind_base_denied(self):
+        p = pr(); p["mergeable_state"] = "behind"
+        self.assertTrue(self.verdict(p=p))
 
 
 class WorkflowRunSafety(unittest.TestCase):

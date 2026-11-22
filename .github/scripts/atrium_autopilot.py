@@ -53,8 +53,12 @@ def check(pr, files, modes):
         errors.append("PR author not allowlisted")
     if not any(str(head.get("ref", "")).startswith(x) for x in ALLOWED_BRANCHES):
         errors.append("Branch must begin docs/ or exp/docs-")
-    if pr.get("mergeable") is not True or pr.get("mergeable_state") != "clean":
-        errors.append("GitHub mergeability gate not ready")
+    # During this very eligibility check GitHub often reports "unstable",
+    # because the check itself is pending. Do not create a circular gate.
+    # The privileged phase separately enforces successful completed checks,
+    # and GitHub rejects merges blocked by branch protections.
+    if pr.get("mergeable") is not True or pr.get("mergeable_state") in ("blocked", "dirty", "behind"):
+        errors.append("GitHub mergeability blocked or conflict")
     if not files or len(files) > MAX_FILES or pr.get("changed_files") != len(files):
         errors.append("Changed-file count invalid or unverified")
     if sum(int(f.get("additions", 0)) for f in files) > MAX_ADDITIONS:
