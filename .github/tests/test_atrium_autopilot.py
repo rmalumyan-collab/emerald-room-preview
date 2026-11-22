@@ -66,5 +66,70 @@ class SafeDocsPolicy(unittest.TestCase):
         p = pr(); p["mergeable_state"] = "blocked"
         self.assertTrue(self.verdict(p=p))
 
+
+class WorkflowRunSafety(unittest.TestCase):
+    @staticmethod
+    def fixture():
+        p = pr()
+        p["head"]["sha"] = "HEAD_SHA"
+        p["base"]["sha"] = "BASE_SHA"
+        run = {
+            "id": 42, "name": "ATRIUM Docs Eligibility",
+            "head_sha": "MERGE_SHA", "head_branch": "docs/note",
+            "event": "pull_request", "conclusion": "success",
+            "path": ".github/workflows/atrium-docs-eligibility.yml@refs/heads/main",
+            "pull_requests": [{"number": 123}]
+        }
+        return p, run
+
+    @staticmethod
+    def api(*, bad_parent=False, failed_job=False):
+        _, run = WorkflowRunSafety.fixture()
+        class Fake:
+            def call(self, method, path, data=None):
+                if path == "/actions/runs/42": return run
+                if path == "/git/commits/MERGE_SHA":
+                    return {"parents": [{"sha": "BASE_SHA"}, {"sha": "STALE_SHA" if bad_parent else "HEAD_SHA"}]}
+                if path == "/actions/runs/42/jobs?per_page=100":
+                    return {"total_count": 1, "jobs": [{"name": "docs-eligibility", "conclusion": "failure" if failed_job else "success"}]}
+                if path.startswith("/commits/MERGE_SHA/check-runs?"):
+                    return {"total_count": 1, "check_runs": [{"name": "docs-eligibility", "conclusion": "success", "status": "completed"}]}
+                if path == "/commits/MERGE_SHA/status": return {"total_count": 0, "state": "pending"}
+                if path.startswith("/pulls?"):
+                    return [{"number": 123, "head": {"ref":"docs/note","repo":{"full_name":"rmalumyan-collab/emerald-world"}},"base":{"ref":"main"}}]
+                raise AssertionError("Unexpected API call: " + path)
+        return Fake()
+
+    def test_synthetic_merge_parent_matches_head(self):
+        p, run = self.fixture()
+        self.assertEqual(policy.verify_event_run(self.api(), run, p), ("HEAD_SHA", "MERGE_SHA"))
+    def test_stale_merge_parent_blocked(self):
+        p, run = self.fixture()
+        with self.assertRaises(RuntimeError):
+            policy.verify_event_run(self.api(bad_parent=True), run, p)
+    def test_failed_docs_job_blocked(self):
+        p, run = self.fixture()
+        with self.assertRaises(RuntimeError):
+            policy.verify_event_run(self.api(failed_job=True), run, p)
+    def test_linked_prs_empty_fallback_exact_branch(self):
+        _, run = self.fixture()
+        run["pull_requests"] = []
+        found = policy.linked_pull_requests(self.api(), run, "rmalumyan-collab/emerald-world")
+        self.assertEqual(len(found), 1)
+        self.assertEqual(found[0]["number"], 123)
+    def test_check_statuses_on_tested_merge_sha(self):
+        policy.verify_statuses(self.api(), "MERGE_SHA")
+    def test_unrelated_workflow_path_blocked(self):
+        p, run = self.fixture()
+        run["path"] = ".github/workflows/attacker.yml@refs/heads/main"
+        # The confirmed API response cannot grant trust to an unrelated name/path.
+        class BadRun(self.api().__class__):
+            def call(self, method, path, data=None):
+                if path == "/actions/runs/42":
+                    return {**run}
+                return super().call(method, path, data)
+        with self.assertRaises(RuntimeError):
+            policy.verify_event_run(BadRun(), run, p)
+
 if __name__ == "__main__":
     unittest.main()
